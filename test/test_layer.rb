@@ -507,28 +507,7 @@ class TestLayer < Minitest::Test
     assert_equal 4, layer[@underline_pos] # underline applied after reset
   end
 
-  def test_layer_tag_bang_method
-    layer = Gouache::Layer.from([1, 31])
-    result = layer.tag!("test")
-    assert_same layer, result  # returns self
-    assert_equal "test", layer.tag
-  end
 
-  def test_layer_tagged_method
-    layer = Gouache::Layer.from([1, 31])
-    result = layer.tagged("test")
-    refute_same layer, result  # returns dup
-    assert_equal layer, result  # same content
-    assert_equal "test", result.tag
-    assert_nil layer.tag  # original unchanged
-  end
-
-  def test_layer_overlay_preserves_tag
-    base = Gouache::Layer.from([1, 31])
-    overlay = Gouache::Layer.from([4])
-    result = base.overlay(overlay, tag: "combined")
-    assert_equal "combined", result.tag
-  end
 
   def test_mixed_range_initialization
     # Test with ranges and integers

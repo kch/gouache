@@ -25,8 +25,6 @@ class Gouache
 
     BASE = new(RANGES.map(&:off)).freeze
 
-    attr_accessor :tag
-
     # special handling for dim/bold
     # dim/bold turn on independently but are both turned off by 22
     # off code goes first so any on code actually applies
@@ -46,15 +44,11 @@ class Gouache
       layer
     end
 
-    def tag!(tag) = tap{ self.tag = tag }
-
-    def tagged(tag) = dup.tag! tag
-
     # return a new layer with 'top' applied on top of 'self'
-    def overlay(top, tag: nil)
+    def overlay(top)
       case top
-      in nil   then tagged(tag)
-      in Layer then Layer.new(zip(top).map{ _2 || _1 }).tag!(tag)
+      in nil   then Layer.empty
+      in Layer then Layer.new zip(top).map{ _2 || _1 }
       in _     then raise TypeError, "must be a Layer"
       end
     end

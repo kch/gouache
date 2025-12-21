@@ -3,6 +3,7 @@ require_relative "gouache/layer"
 require_relative "gouache/layer_stack"
 require_relative "gouache/stylesheet"
 require_relative "gouache/emitter"
+require_relative "gouache/builder"
 
 class Gouache
   OSC        = "\e]"
@@ -22,6 +23,15 @@ class Gouache
     @io = io
     @enabled = enabled
     @rules = Stylesheet::BASE.merge(styles, kvstyles)
+  end
+
+  def method_missing(m, ...)
+    Builder::Proxy.for(self, m, ...) || super
+  end
+
+  def call(...)
+    raise ArgumentError unless block_given?
+    Builder::Proxy.for(self, nil, ...)
   end
 
 end

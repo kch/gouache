@@ -1,7 +1,11 @@
 require_relative "emitter"
+require_relative "wrap"
+require "strscan"
 
 class Gouache
   module Builder
+
+    using Wrap
 
     def self._compile node, emitter:
       return unless node&.any?                       # stop recursing
@@ -9,23 +13,55 @@ class Gouache
       tag, *first = first if first in [Symbol, *]    # node may begin with tag or not
       rest = rest.reverse_each.inject{|b,a| a << b } # nest symbol chains [:a,:b,:c] -> [:a,[:b,[:c]]]
       emitter.open_tag tag if tag
-      for e in first
-        case e
-        in Array then _compile(e, emitter:)
-        in _     then emitter << e.to_s
-        end
-      end
+      first.each{ emit_content(it, emitter:) }
       _compile(rest, emitter:)
       emitter.close_tag if tag
       nil
     end
 
     def self.compile root, instance:
-      emitter = Gouache::Emitter.new(instance:)
+      emitter = instance.mk_emitter
       _compile(root, emitter:)
       emitter.emit!
     end
 
+    def self.safe_emit_sgr s, emitter:
+      unless s.has_sgr?
+        emitter << s
+        return nil
+      end
+
+      ss = StringScanner.new s
+      wraps = 1
+      emitter.begin_sgr
+      while text = ss.scan_until(RX_ESC_LA)
+        emitter << text
+        case
+        when ss.skip(WRAP_OPEN)
+          wraps += 1
+          emitter.begin_sgr
+          emitter << ss.scan_until(RX_ESC_LA)
+        when ss.skip(WRAP_CLOSE)
+          next if wraps == 0
+          wraps -= 1
+          emitter.end_sgr
+        when sgr = ss.scan(RX_SGR)
+          emitter.push_sgr sgr
+        else emitter << ss.scan(?\e)
+        end
+      end
+      wraps.times{ emitter.end_sgr }
+      emitter << ss.rest
+      nil
+    end
+
+    def self.emit_content(x, emitter:)
+      case x
+      in Array  then _compile(x, emitter:)
+      in String then safe_emit_sgr(x, emitter:)
+      in _      then emitter << x
+      end
+    end
 
     class UnfinishedChain < RuntimeError
       def initialize(chain) = super "call chain #{chain.instance_exec{@tags}*?.} left dangling with no arguments"
@@ -62,10 +98,10 @@ class Gouache
       end
 
       def initialize(instance)
-        @instance = instance
+        # @instance = instance
+        @emitter  = instance.mk_emitter
         @tags     = []
         @nesting  = 0
-        @emitter  = ::Gouache::Emitter.new(instance:)
       end
 
       # def call(...) = _build!(nil, ...)
@@ -86,7 +122,7 @@ class Gouache
         end
 
         @emitter.open_tag m if m
-        content.each{ @emitter << it }
+        content.each{ ::Gouache::Builder.emit_content(it, emitter: @emitter) }
 
         @nesting += 1
         case builder&.arity

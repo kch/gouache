@@ -13,6 +13,8 @@ class Gouache
   CODE       = "971"
   WRAP_OPEN  = [OSC, CODE, 1, ST].join
   WRAP_CLOSE = [OSC, CODE, 2, ST].join
+  RX_ESC_LA  = /(?=\e)/
+  RX_SGR     = /#{Regexp.escape(CSI)}[;\d]*m/
 
   attr :rules
 
@@ -44,6 +46,7 @@ class Gouache
     Builder::Proxy.for(self, nil, ...)
   end
 
+  def mk_emitter = Emitter.new(instance: self)
   def wrap(s) = s.wrap
   alias embed wrap
 

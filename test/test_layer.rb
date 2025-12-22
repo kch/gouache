@@ -124,6 +124,18 @@ class TestLayer < Minitest::Test
     refute_same @layer, result  # should be a dup
   end
 
+  def test_layer_overlay_nil_inherits_values
+    # Test that overlaying nil on a layer with values inherits the underlayer values
+    base = Gouache::Layer.from(1, 31)  # bold red
+    result = base.overlay(nil)
+
+    # Result should inherit bold and red from base layer
+    assert_equal 1, result[@bold_pos]
+    assert_equal 31, result[@fg_pos]
+    assert_equal base, result
+    refute_same base, result
+  end
+
   def test_layer_overlay_basic
     base = Gouache::Layer.from([1, 31])    # bold red
     overlay = Gouache::Layer.from([4, 32]) # underline green

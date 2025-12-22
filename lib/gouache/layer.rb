@@ -47,7 +47,7 @@ class Gouache
     # return a new layer with 'top' applied on top of 'self'
     def overlay(top)
       case top
-      in nil   then Layer.empty
+      in nil   then overlay Layer.empty
       in Layer then Layer.new zip(top).map{ _2 || _1 }
       in _     then raise TypeError, "must be a Layer"
       end

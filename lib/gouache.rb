@@ -29,6 +29,10 @@ class Gouache
     Builder::Proxy.for(self, m, ...) || super
   end
 
+  def [](*args, &b)
+    if b then call(*args, &b) else Builder.compile(args, instance: self) end
+  end
+
   def call(...)
     raise ArgumentError unless block_given?
     Builder::Proxy.for(self, nil, ...)

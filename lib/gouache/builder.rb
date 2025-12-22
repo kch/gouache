@@ -3,6 +3,29 @@ require_relative "emitter"
 class Gouache
   module Builder
 
+    def self._compile node, emitter:
+      return unless node&.any?                       # stop recursing
+      first, *rest = *node.slice_before(Symbol)      # each symbol marks a new tag/node
+      tag, *first = first if first in [Symbol, *]    # node may begin with tag or not
+      rest = rest.reverse_each.inject{|b,a| a << b } # nest symbol chains [:a,:b,:c] -> [:a,[:b,[:c]]]
+      emitter.open_tag tag if tag
+      for e in first
+        case e
+        in Array then _compile(e, emitter:)
+        in _     then emitter << e.to_s
+        end
+      end
+      _compile(rest, emitter:)
+      emitter.close_tag if tag
+      nil
+    end
+
+    def self.compile root, instance:
+      emitter = Gouache::Emitter.new(instance:)
+      _compile(root, emitter:)
+      emitter.emit!
+    end
+
 
     class UnfinishedChain < RuntimeError
       def initialize(chain) = super "call chain #{chain.instance_exec{@tags}*?.} left dangling with no arguments"

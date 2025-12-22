@@ -553,4 +553,286 @@ class TestEmitter < Minitest::Test
     result = @emitter.emit!
     assert_equal "final", result
   end
+
+  def test_bold_dim_basic_transitions
+    @emitter.open_tag(:bold)
+    @emitter << "bold "
+    @emitter.open_tag(:dim)
+    @emitter << "bold-dim "
+    @emitter.close_tag
+    @emitter << "bold"
+
+    result = @emitter.emit!
+    assert_equal "\e[22;1mbold \e[1;2mbold-dim \e[22;1mbold\e[0m", result
+  end
+
+  def test_dim_bold_alternating
+    @emitter.open_tag(:dim)
+    @emitter << "dim "
+    @emitter.open_tag(:bold)
+    @emitter << "dim-bold "
+    @emitter.close_tag
+    @emitter << "dim"
+
+    result = @emitter.emit!
+    assert_equal "\e[22;2mdim \e[1;2mdim-bold \e[22;2mdim\e[0m", result
+  end
+
+  def test_bold_dim_with_intermediate_styles
+    @emitter.open_tag(:bold)
+    @emitter << "bold "
+    @emitter.open_tag(:red)
+    @emitter << "bold-red "
+    @emitter.open_tag(:underline)
+    @emitter << "bold-red-underline "
+    @emitter.open_tag(:dim)
+    @emitter << "bold-red-underline-dim "
+    @emitter.close_tag  # close dim
+    @emitter << "bold-red-underline "
+    @emitter.close_tag  # close underline
+    @emitter << "bold-red "
+    @emitter.close_tag  # close red
+    @emitter << "bold"
+
+    result = @emitter.emit!
+    assert_equal "\e[22;1mbold \e[31mbold-red \e[4mbold-red-underline \e[1;2mbold-red-underline-dim \e[22;1mbold-red-underline \e[24mbold-red \e[39mbold\e[0m", result
+  end
+
+  def test_bold_other_stuff_dim_pop_sequence
+    @emitter.open_tag(:bold)
+    @emitter.open_tag(:red)
+    @emitter.open_tag(:italic)
+    @emitter.open_tag(:underline)
+    @emitter.open_tag(:dim)
+    @emitter << "all-styles "
+
+    # Pop dim
+    @emitter.close_tag
+    @emitter << "no-dim "
+
+    # Pop underline
+    @emitter.close_tag
+    @emitter << "no-underline "
+
+    # Pop italic
+    @emitter.close_tag
+    @emitter << "no-italic "
+
+    # Pop red
+    @emitter.close_tag
+    @emitter << "no-red "
+
+    # Pop bold
+    @emitter.close_tag
+    @emitter << "plain"
+
+    result = @emitter.emit!
+    assert_equal "\e[31;3;4;1;2mall-styles \e[22;1mno-dim \e[24mno-underline \e[23mno-italic \e[39mno-red \e[22mplain\e[0m", result
+  end
+
+  def test_bold_dim_combined_single_tag
+    gouache = Gouache.new(bold_dim: [1, 2])
+    emitter = Gouache::Emitter.new(instance: gouache)
+
+    emitter.open_tag(:bold_dim)
+    emitter << "combined "
+    emitter.close_tag
+    emitter << "plain"
+
+    result = emitter.emit!
+    assert_equal "\e[1;2mcombined \e[22mplain\e[0m", result
+  end
+
+  def test_complex_bold_dim_scenario
+    @emitter.open_tag(:bold)
+    @emitter.open_tag(:green)
+    @emitter.open_tag(:italic)
+    @emitter << "bold-green-italic "
+
+    @emitter.open_tag(:dim)
+    @emitter << "add-dim "
+
+    @emitter.open_tag(:blue)
+    @emitter << "change-to-blue "
+
+    @emitter.open_tag(:underline)
+    @emitter << "add-underline "
+
+    # Start popping
+    @emitter.close_tag  # close underline
+    @emitter << "remove-underline "
+
+    @emitter.close_tag  # close blue
+    @emitter << "back-to-green "
+
+    @emitter.close_tag  # close dim
+    @emitter << "remove-dim "
+
+    @emitter.close_tag  # close italic
+    @emitter << "remove-italic "
+
+    @emitter.close_tag  # close green
+    @emitter << "remove-green "
+
+    @emitter.close_tag  # close bold
+    @emitter << "remove-bold"
+
+    result = @emitter.emit!
+    assert_equal "\e[32;3;22;1mbold-green-italic \e[1;2madd-dim \e[34mchange-to-blue \e[4madd-underline \e[24mremove-underline \e[32mback-to-green \e[22;1mremove-dim \e[23mremove-italic \e[39mremove-green \e[22mremove-bold\e[0m", result
+  end
+
+  def test_sgr_bold_dim_interactions
+    @emitter.begin_sgr
+    @emitter.push_sgr("1")  # bold via SGR
+    @emitter << "sgr-bold "
+
+    @emitter.open_tag(:dim)
+    @emitter << "tag-dim "
+
+    @emitter.push_sgr("31")  # red via SGR
+    @emitter << "add-red "
+
+    @emitter.close_tag  # close dim tag
+    @emitter << "remove-dim "
+
+    @emitter.end_sgr  # close SGR block
+    @emitter << "plain"
+
+    result = @emitter.emit!
+    assert_equal "\e[22;1msgr-bold \e[1;2mtag-dim \e[31madd-red \e[39;22;1mremove-dim \e[22mplain\e[0m", result
+  end
+
+  def test_nested_bold_dim_tags
+    @emitter.open_tag(:bold)
+    @emitter.open_tag(:bold)  # nested bold
+    @emitter << "double-bold "
+
+    @emitter.open_tag(:dim)
+    @emitter << "bold-bold-dim "
+
+    @emitter.close_tag  # close dim
+    @emitter << "back-to-double-bold "
+
+    @emitter.close_tag  # close inner bold
+    @emitter << "single-bold "
+
+    @emitter.close_tag  # close outer bold
+    @emitter << "plain"
+
+    result = @emitter.emit!
+    assert_equal "\e[22;1mdouble-bold \e[1;2mbold-bold-dim \e[22;1mback-to-double-bold single-bold \e[22mplain\e[0m", result
+  end
+
+  def test_bold_dim_no_text_compaction
+    @emitter.open_tag(:bold)
+    @emitter.open_tag(:dim)
+    @emitter.close_tag
+    @emitter.close_tag
+
+    result = @emitter.emit!
+    assert_equal "", result
+  end
+
+  def test_bold_dim_text_forces_sgr_flush
+    @emitter.open_tag(:bold)
+    # No text yet - nothing should be emitted
+
+    @emitter.open_tag(:dim)
+    # Still no text
+
+    @emitter << "text"  # This forces SGR flush
+    @emitter.close_tag
+    @emitter.close_tag
+
+    result = @emitter.emit!
+    assert_equal "\e[1;2mtext\e[0m", result
+  end
+
+  def test_bold_dim_intermediate_text_flushes
+    @emitter.open_tag(:bold)
+    @emitter << "bold1"  # Forces initial bold SGR
+
+    @emitter.open_tag(:dim)
+    # Dim overlay causes immediate SGR change
+    @emitter << "bold-dim"
+
+    @emitter.close_tag  # Pop dim
+    @emitter << "bold2"  # Forces SGR for back to bold
+
+    result = @emitter.emit!
+    assert_equal "\e[22;1mbold1\e[1;2mbold-dim\e[22;1mbold2\e[0m", result
+  end
+
+  def test_bold_dim_no_text_between_operations
+    @emitter.open_tag(:bold)
+    @emitter.open_tag(:red)
+    @emitter.open_tag(:dim)
+    @emitter.open_tag(:underline)
+    # No text added yet
+
+    @emitter.close_tag  # close underline
+    @emitter.close_tag  # close dim
+    @emitter.close_tag  # close red
+    @emitter.close_tag  # close bold
+
+    result = @emitter.emit!
+    assert_equal "", result  # Should be optimized away
+  end
+
+  def test_mixed_sgr_tag_bold_dim_flush_behavior
+    @emitter.begin_sgr
+    @emitter.push_sgr("1")  # bold via SGR
+    # No text yet
+
+    @emitter.open_tag(:dim)
+    # Still no text - operations should be queued
+
+    @emitter.push_sgr("31")  # red via SGR
+    @emitter << "first"  # This flushes all pending SGR
+
+    @emitter.end_sgr
+    @emitter << "second"  # This flushes the SGR pop
+
+    @emitter.close_tag
+    @emitter << "third"   # This flushes the tag pop
+
+    result = @emitter.emit!
+    assert_equal "\e[31;1;2mfirstsecond\e[39;22;1mthird\e[0m", result
+  end
+
+  def test_bold_dim_empty_tag_optimization
+    @emitter.open_tag(:bold)
+    @emitter.open_tag(:dim)
+    @emitter.open_tag(:red)
+    # Open several tags but add no text
+    @emitter.close_tag
+    @emitter.close_tag
+    @emitter.close_tag
+
+    # Then add a completely different style
+    @emitter.open_tag(:underline)
+    @emitter << "underline-only"
+    @emitter.close_tag
+
+    result = @emitter.emit!
+    assert_equal "\e[4munderline-only\e[0m", result
+  end
+
+  def test_bold_dim_partial_flush_scenarios
+    @emitter.open_tag(:bold)
+    @emitter << "bold "  # Flushes bold
+
+    @emitter.open_tag(:dim)
+    # Dim immediately changes output
+
+    @emitter.open_tag(:red)
+    @emitter << "bold-dim-red "  # Flushes dim+red overlay
+
+    @emitter.close_tag  # Close red
+    @emitter.close_tag  # Close dim - should trigger reset+reapply
+    @emitter << "back-to-bold"
+
+    result = @emitter.emit!
+    assert_equal "\e[22;1mbold \e[31;1;2mbold-dim-red \e[39;22;1mback-to-bold\e[0m", result
+  end
 end

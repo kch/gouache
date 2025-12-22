@@ -311,4 +311,141 @@ class TestLayerStack < Minitest::Test
     # Base layer should have nil tag
     assert_nil @stack.base.tag
   end
+
+  def test_stack_bold_dim_basic_transitions
+    bold = Gouache::Layer.from(1)
+    dim = Gouache::Layer.from(2)
+
+    # Push bold
+    open_sgr = @stack.diffpush(bold)
+    assert_equal [22, 1], open_sgr
+
+    # Push dim on top of bold
+    open_sgr = @stack.diffpush(dim)
+    assert_equal [1, 2], open_sgr
+
+    # Pop back to bold
+    close_sgr = @stack.diffpop
+    assert_equal [22, 1], close_sgr
+  end
+
+  def test_stack_bold_dim_with_intermediate_layers
+    bold = Gouache::Layer.from(1)
+    red = Gouache::Layer.from(31)
+    underline = Gouache::Layer.from(4)
+    dim = Gouache::Layer.from(2)
+
+    # Build: BASE -> bold -> red -> underline -> dim
+    @stack.diffpush(bold)
+    @stack.diffpush(red)
+    @stack.diffpush(underline)
+    @stack.diffpush(dim)
+    assert_equal 5, @stack.size
+
+    # Pop dim, should go back to bold+red+underline
+    close_sgr = @stack.diffpop
+    assert_equal [22, 1], close_sgr
+
+    # Pop underline, should keep bold+red
+    close_sgr = @stack.diffpop
+    assert_equal [24], close_sgr
+  end
+
+  def test_stack_bold_other_stuff_dim_sequence
+    bold = Gouache::Layer.from(1)
+    red = Gouache::Layer.from(31)
+    italic = Gouache::Layer.from(3)
+    underline = Gouache::Layer.from(4)
+    dim = Gouache::Layer.from(2)
+
+    # Push bold -> red -> italic -> underline -> dim
+    @stack.diffpush(bold)
+    @stack.diffpush(red)
+    @stack.diffpush(italic)
+    @stack.diffpush(underline)
+    @stack.diffpush(dim)
+    assert_equal 6, @stack.size
+
+    # Start popping - dim should trigger reset+reapply
+    close_sgr = @stack.diffpop
+    assert_equal [22, 1], close_sgr
+
+    # Pop underline - no reset needed
+    close_sgr = @stack.diffpop
+    assert_equal [24], close_sgr
+
+    # Pop italic - no reset needed
+    close_sgr = @stack.diffpop
+    assert_equal [23], close_sgr
+
+    # Pop red - no reset needed
+    close_sgr = @stack.diffpop
+    assert_equal [39], close_sgr
+
+    # Pop bold - should reset
+    close_sgr = @stack.diffpop
+    assert_equal [22], close_sgr
+  end
+
+  def test_stack_dim_bold_alternating
+    dim = Gouache::Layer.from(2)
+    bold = Gouache::Layer.from(1)
+    red = Gouache::Layer.from(31)
+
+    # Push dim
+    @stack.diffpush(dim)
+    open_sgr = @stack.diffpush(red)
+    assert_equal [31], open_sgr
+
+    # Push bold over dim+red
+    open_sgr = @stack.diffpush(bold)
+    assert_equal [1, 2], open_sgr
+
+    # Pop bold
+    close_sgr = @stack.diffpop
+    assert_equal [22, 2], close_sgr
+  end
+
+  def test_stack_bold_dim_combined_layer
+    bold_dim = Gouache::Layer.from(1, 2)  # both bold and dim
+
+    # Push combined bold+dim
+    open_sgr = @stack.diffpush(bold_dim)
+    assert_equal [1, 2], open_sgr
+
+    # Pop back to base
+    close_sgr = @stack.diffpop
+    assert_equal [22], close_sgr
+  end
+
+  def test_stack_complex_bold_dim_scenario
+    # Complex scenario: bold -> other -> dim -> other -> back to bold
+    bold = Gouache::Layer.from(1)
+    green = Gouache::Layer.from(32)
+    italic = Gouache::Layer.from(3)
+    dim = Gouache::Layer.from(2)
+    blue = Gouache::Layer.from(34)
+    underline = Gouache::Layer.from(4)
+
+    # Build complex stack
+    @stack.diffpush(bold)      # bold
+    @stack.diffpush(green)     # bold+green
+    @stack.diffpush(italic)    # bold+green+italic
+    @stack.diffpush(dim)       # bold+green+italic+dim
+    @stack.diffpush(blue)      # bold+green+italic+dim+blue
+    @stack.diffpush(underline) # bold+green+italic+dim+blue+underline
+    assert_equal 7, @stack.size
+
+    # Pop underline - simple removal
+    close_sgr = @stack.diffpop
+    assert_equal [24], close_sgr
+
+    # Pop blue - color change
+    close_sgr = @stack.diffpop
+    assert_equal [32], close_sgr
+
+    # Pop dim - should trigger reset+reapply since bold remains
+    close_sgr = @stack.diffpop
+    assert_equal [22, 1], close_sgr
+  end
 end

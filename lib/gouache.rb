@@ -45,13 +45,8 @@ class Gouache
   def wrap(s)    = self.class.wrap(s)
   alias embed wrap
 
-  def method_missing(m, ...)
-    Builder::Proxy.for(self, m, ...) || super
-  end
-
-  def [](*args, &b)
-    if b then call(args, &b) else Builder.compile(args, instance: self) end
-  end
+  def method_missing(m, ...) = Builder::Proxy.for(self, m, ...) || super
+  def [](*args, &b)          = b ? call(args, &b) : Builder.compile(args, instance: self)
 
   def call(...)
     raise ArgumentError unless block_given?

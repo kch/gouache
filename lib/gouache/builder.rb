@@ -103,7 +103,7 @@ class Gouache
         @nesting  = 0
       end
 
-      # def call(...) = _build!(nil, ...)
+      # def call(...) = _build!(nil, ...) # TODO: Do we want this?
 
       def <<(s) = @emitter << s
 

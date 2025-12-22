@@ -5,6 +5,7 @@ require_relative "gouache/stylesheet"
 require_relative "gouache/emitter"
 require_relative "gouache/builder"
 require_relative "gouache/wrap"
+require "forwardable"
 
 class Gouache
   OSC        = "\e]"
@@ -26,12 +27,27 @@ class Gouache
     def unpaint(s)  = s.gsub(RX_UNPAINT, "")
     def wrap(s)     = s.wrap
     alias embed wrap
+
+    extend Forwardable
+    def_delegators "::Gouache::MAIN", :enable, :disable, :reopen, :enabled?, :puts, :print
+
+    def [](*args, **styles, &b) = (styles.empty? ? MAIN : MAIN.dup(styles:))[*args, &b]
+
+    def method_missing(m, ...) = Builder::Proxy.for(MAIN, m, ...) || super
   end
 
   def initialize(styles:{}, io:nil, enabled:nil, **kvstyles)
     @io      = io
     @enabled = enabled
     @rules   = Stylesheet::BASE.merge(styles, kvstyles)
+  end
+
+  MAIN = new # global instance
+
+  def dup(styles: nil)
+    go = self.class.new(io: @io, enabled: @enabled)
+    go.instance_variable_set(:@rules, @rules.merge(styles))
+    go
   end
 
   def io         = @io || $stdout

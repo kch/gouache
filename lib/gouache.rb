@@ -33,8 +33,14 @@ class Gouache
     @rules   = Stylesheet::BASE.merge(styles, kvstyles)
   end
 
+  def io         = @io || $stdout
+  def enable     = tap{ @enabled = true }
+  def disable    = tap{ @enabled = false }
+  def enabled?   = @enabled.nil? ? io.tty? : @enabled
+  def reopen(io) = tap{ @io = io }
+
   def mk_emitter = Emitter.new(instance: self)
-  def repaint(s) = mk_emitter.tap{ Builder.safe_emit_sgr(s, emitter: it) }.emit!
+  def repaint(s) = enabled? ? mk_emitter.tap{ Builder.safe_emit_sgr(s, emitter: it) }.emit! : unpaint(s)
   def unpaint(s) = self.class.unpaint(s)
   def wrap(s)    = self.class.wrap(s)
   alias embed wrap

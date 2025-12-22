@@ -6,20 +6,36 @@ class TestRepaint < Minitest::Test
   using Gouache::Wrap
 
   def setup
-    @go = Gouache.new
+    @go = Gouache.new.enable  # Ensure enabled for default tests
   end
 
-  def test_repaint_plain_text_passes_through
-    # Plain text without SGR codes should pass through unchanged
+  def test_repaint_plain_text_passes_through_enabled
+    # Plain text without SGR codes should pass through unchanged when enabled
     result = @go.repaint("plain text")
     assert_equal "plain text", result
   end
 
-  def test_repaint_fixes_reset_code_leakage
-    # \e[0m would reset all styles - should be transformed to specific resets
+  def test_repaint_plain_text_passes_through_disabled
+    # Plain text should pass through unchanged when disabled
+    @go.disable
+    result = @go.repaint("plain text")
+    assert_equal "plain text", result
+  end
+
+  def test_repaint_fixes_reset_code_leakage_enabled
+    # \e[0m would reset all styles - should be transformed to specific resets when enabled
     problematic = "text with \e[31mred\e[0m reset"
     result = @go.repaint(problematic)
     expected = "text with \e[31mred\e[39m reset\e[0m"  # 0m -> 39m (default fg), final 0m added
+    assert_equal expected, result
+  end
+
+  def test_repaint_strips_sgr_when_disabled
+    # When disabled, repaint should strip SGR codes like unpaint
+    @go.disable
+    problematic = "text with \e[31mred\e[0m reset"
+    result = @go.repaint(problematic)
+    expected = "text with red reset"  # All SGR codes stripped
     assert_equal expected, result
   end
 
@@ -195,18 +211,43 @@ class TestRepaint < Minitest::Test
     assert_equal expected, result
   end
 
-  def test_repaint_vs_safe_emit_consistency
-  # repaint should produce identical result to direct safe_emit_sgr call
-  problematic = "test \e[1;31mbold red\e[0m end"
+  def test_repaint_contains_sgr_when_enabled
+    # repaint should contain SGR codes when enabled
+    problematic = "test \e[1;31mbold red\e[0m end"
+    result = @go.repaint(problematic)
 
-  # Direct call to safe_emit_sgr (what repaint does internally)
-  emitter = @go.mk_emitter
-  Gouache::Builder.safe_emit_sgr(problematic, emitter: emitter)
-  direct_result = emitter.emit!
+    # Should contain SGR codes when enabled
+    assert_match(/\e\[\d/, result)  # Contains escape sequences
+    refute_equal "test bold red end", result  # Not just plain text
+  end
 
-  # repaint method call - should be identical
-  repaint_result = @go.repaint(problematic)
+  def test_repaint_vs_unpaint_consistency_when_disabled
+    # repaint should produce identical result to unpaint when disabled
+    @go.disable
+    problematic = "test \e[1;31mbold red\e[0m end"
 
-  assert_equal direct_result, repaint_result  # Both methods produce same output
+    # unpaint call (what repaint does internally when disabled)
+    unpaint_result = @go.unpaint(problematic)
+
+    # repaint method call - should be identical when disabled
+    repaint_result = @go.repaint(problematic)
+
+    assert_equal unpaint_result, repaint_result  # Both methods produce same output
+  end
+
+  def test_repaint_enabled_state_switching
+    # repaint behavior should change based on current enabled state
+    problematic = "text \e[31mred\e[0m end"
+
+    # When enabled - should process SGR codes
+    @go.enable
+    enabled_result = @go.repaint(problematic)
+    assert_includes enabled_result, "\e[31m"  # Contains SGR codes
+
+    # When disabled - should strip SGR codes
+    @go.disable
+    disabled_result = @go.repaint(problematic)
+    refute_includes disabled_result, "\e[31m"  # No SGR codes
+    assert_equal "text red end", disabled_result
   end
 end

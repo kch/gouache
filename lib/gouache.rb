@@ -4,6 +4,7 @@ require_relative "gouache/layer_stack"
 require_relative "gouache/stylesheet"
 require_relative "gouache/emitter"
 require_relative "gouache/builder"
+require_relative "gouache/wrap"
 
 class Gouache
   OSC        = "\e]"
@@ -15,8 +16,13 @@ class Gouache
 
   attr :rules
 
+  using Wrap
+
   class << self
     def scan_sgr(s) = s.scan(/([34]8;(?:5;\d+|2(?:;\d+){3}))|(\d+)/).map{|s,d| s ? s : d.to_i }
+
+    def wrap(s) = s.wrap
+    alias embed wrap
   end
 
   def initialize(styles:{}, io:nil, enabled:nil, **kvstyles)
@@ -37,5 +43,8 @@ class Gouache
     raise ArgumentError unless block_given?
     Builder::Proxy.for(self, nil, ...)
   end
+
+  def wrap(s) = s.wrap
+  alias embed wrap
 
 end

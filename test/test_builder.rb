@@ -497,4 +497,96 @@ class TestBuilder < Minitest::Test
     expected = "\e[32;22;1mdeep_bold\e[35;3;22mvery_deep\e[23mplain\e[0m"
     assert_equal expected, result
   end
+
+  def test_bracket_method_with_block_only
+    # [] method with block only should work like call()
+    result = @gouache[] {|x| x.red("content") }
+    assert_equal "\e[31mcontent\e[0m", result
+  end
+
+  def test_bracket_method_with_text_and_block
+    # [] method with text and block should combine both
+    result = @gouache["prefix"] {|x| x.blue("block_content") }
+    expected = "prefix\e[34mblock_content\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_bracket_method_with_multiple_args_and_block
+    # [] method with multiple arguments and block
+    result = @gouache["start", :bold, "bold_part"] {|x|
+      x.red("red_content")
+      x << " suffix"
+    }
+    expected = "start\e[22;1mbold_part\e[31;22mred_content\e[39m suffix\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_bracket_method_with_array_args_and_block
+    # [] method with array arguments and block
+    result = @gouache[[:italic, "italic_part"], "middle"] {|x|
+      x.underline("underlined")
+    }
+    expected = "\e[3mitalic_part\e[23mmiddle\e[4munderlined\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_bracket_method_with_empty_args_and_block
+    # [] method with empty args and block
+    result = @gouache[] {|x|
+      x.green("green_text")
+      x.bold("bold_text")
+    }
+    expected = "\e[32mgreen_text\e[39;22;1mbold_text\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_bracket_method_block_vs_call_consistency
+    # [] method with block should match call() behavior
+    content_args = ["prefix", :red, "RED_TEXT"]
+
+    bracket_result = @gouache[*content_args] {|x| x.bold("bold_block") }
+    call_result = @gouache.call(content_args) {|x| x.bold("bold_block") }
+
+    assert_equal call_result, bracket_result
+    # Verify symbols are processed as styling, not literal text
+    assert_includes bracket_result, "\e[31m"  # Contains red styling
+    refute_includes bracket_result, "red"  # Not literal ":red" symbol
+  end
+
+  def test_bracket_method_nested_blocks
+    # [] method with nested blocks
+    result = @gouache["outer"] {|a|
+      a.red {|b|
+        b.bold("nested_content")
+      }
+      a << " final"
+    }
+    expected = "outer\e[31;22;1mnested_content\e[39;22m final\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_bracket_method_with_symbol_args_and_block
+    # [] method with symbol styling and block
+    result = @gouache[:italic, "styled_start"] {|x|
+      x.red("block_red")
+      x.underline("block_underline")
+    }
+    expected = "\e[3mstyled_start\e[31;23mblock_red\e[39;4mblock_underline\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_bracket_method_block_with_chaining
+    # [] method block with method chaining inside
+    result = @gouache["prefix"] {|x|
+      x.red.bold("chained_method")
+    }
+    expected = "prefix\e[31;22;1mchained_method\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_bracket_method_without_block_still_works
+    # Ensure [] without block still works (compilation mode)
+    result = @gouache[:red, "no_block"]
+    assert_equal "\e[31mno_block\e[0m", result
+  end
 end

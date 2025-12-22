@@ -50,7 +50,7 @@ class Gouache
   end
 
   def [](*args, &b)
-    if b then call(*args, &b) else Builder.compile(args, instance: self) end
+    if b then call(args, &b) else Builder.compile(args, instance: self) end
   end
 
   def call(...)

@@ -46,6 +46,7 @@ class Gouache
     Builder::Proxy.for(self, nil, ...)
   end
 
+  def repaint(s) = mk_emitter.tap{ Builder.safe_emit_sgr(s, emitter: it) }.emit!
   def mk_emitter = Emitter.new(instance: self)
   def wrap(s) = s.wrap
   alias embed wrap

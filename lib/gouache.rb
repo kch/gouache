@@ -55,6 +55,8 @@ class Gouache
   def disable    = tap{ @enabled = false }
   def enabled?   = @enabled.nil? ? io.tty? : @enabled
   def reopen(io) = tap{ @io = io }
+  def puts(*x)   = io.puts(*x.map{  printable it })
+  def print(*x)  = io.print(*x.map{ printable it })
 
   private def printable(x)
     return x unless x.is_a? String
@@ -63,11 +65,8 @@ class Gouache
     return x
   end
 
-  def puts(*x)   = io.puts(*x.map{  printable it })
-  def print(*x)  = io.print(*x.map{ printable it })
-
   def mk_emitter = Emitter.new(instance: self)
-  def repaint(s) = enabled? ? mk_emitter.tap{ Builder.safe_emit_sgr(s, emitter: it) }.emit! : unpaint(s)
+  def repaint(s) = !enabled? ? unpaint(s) : mk_emitter.tap{ Builder.safe_emit_sgr(s, emitter: it) }.emit!
   def unpaint(s) = self.class.unpaint(s)
   def wrap(s)    = self.class.wrap(s)
   alias embed wrap

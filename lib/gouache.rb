@@ -11,7 +11,7 @@ class Gouache
   OSC        = "\e]"
   CSI        = "\e["
   ST         = "\e\\"
-  CODE       = "971"
+  CODE       = "971" # meaningless magic number
   WRAP_SEQ   = [OSC, CODE].join
   WRAP_OPEN  = [OSC, CODE, 1, ST].join
   WRAP_CLOSE = [OSC, CODE, 2, ST].join

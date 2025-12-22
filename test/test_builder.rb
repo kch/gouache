@@ -478,9 +478,9 @@ class TestBuilder < Minitest::Test
     # Mix of builder method calls with arrays and direct append operator
     result = @gouache.red {|x|
       x.blue([:bold, "from_array"])                         # Method call with array
-      x << ["appended_array", :italic, "italic_appended"]   # Append operator treats array as string
+      x << ["appended_array", :italic, "italic_appended"]   # Append operator now handles arrays properly
     }
-    expected = "\e[34;22;1mfrom_array\e[31;22m[\"appended_array\", :italic, \"italic_appended\"]\e[0m"
+    expected = "\e[34;22;1mfrom_array\e[31;22mappended_array\e[3mitalic_appended\e[0m"
     assert_equal expected, result
   end
 
@@ -495,6 +495,24 @@ class TestBuilder < Minitest::Test
       }
     }
     expected = "\e[32;22;1mdeep_bold\e[35;3;22mvery_deep\e[23mplain\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_append_operator_with_simple_array
+    # Append operator should handle simple arrays like method calls
+    result = @gouache.red {|x|
+      x << ["hello", "world"]
+    }
+    expected = "\e[31mhelloworld\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_append_operator_with_nested_arrays_and_symbols
+    # Append operator should compile complex nested array structures
+    result = @gouache.blue {|x|
+      x << [[:bold, "bold"], " ", [:italic, "italic"]]
+    }
+    expected = "\e[34;22;1mbold\e[22m \e[3mitalic\e[0m"
     assert_equal expected, result
   end
 

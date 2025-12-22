@@ -105,7 +105,7 @@ class Gouache
 
       # def call(...) = _build!(nil, ...) # TODO: Do we want this?
 
-      def <<(s) = @emitter << s
+      def <<(s) = ::Gouache::Builder.emit_content(s, emitter: @emitter)
 
       private def method_missing(m, ...)
         return super if %i[ to_s to_str to_ary ].include? m # prevent confusion if proxy leaks

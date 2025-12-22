@@ -62,7 +62,49 @@ class TestSafeEmitSgr < Minitest::Test
       r << "text with \e[31mmanual red\e[0m "  # manual SGR in appended text
       r.bold("bold text")                      # then a tagged section
     }
-    expected = "\e[31mplain text with \e[31mmanual red\e[0m \e[22;1mbold text\e[0m"
+    expected = "\e[31mplain text with manual red\e[39m \e[31;22;1mbold text\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_multiple_manual_resets_in_sequence
+    # Multiple manual reset codes should be properly handled
+    result = @go.blue { |b|
+      b << "start \e[31mred\e[0m middle \e[32mgreen\e[0m end"
+      b.bold("final")
+    }
+    expected = "\e[34mstart \e[31mred\e[39m middle \e[32mgreen\e[39m end\e[34;22;1mfinal\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_nested_manual_sgr_with_builder_tags
+    # Manual SGR nested within builder tag contexts
+    result = @go.red { |r|
+      r.bold { |b|
+        b << "bold with \e[33myellow\e[0m inside"
+      }
+      r << " after bold"
+    }
+    expected = "\e[31;22;1mbold with \e[33myellow\e[39;22m inside\e[31m after bold\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_manual_reset_before_builder_method
+    # Manual reset immediately before builder method call
+    result = @go.green { |g|
+      g << "text \e[31mred\e[0m"  # manual reset
+      g.italic("italic")          # should start fresh from green context
+    }
+    expected = "\e[32mtext \e[31mred\e[32;3mitalic\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_partial_manual_sgr_codes
+    # Manual SGR codes that don't fully reset (like 39, 49, etc.)
+    result = @go.red { |r|
+      r << "red \e[32mgreen\e[39m back"  # 39 resets foreground only
+      r.bold("bold")
+    }
+    expected = "\e[31mred \e[32mgreen\e[39m back\e[31;22;1mbold\e[0m"
     assert_equal expected, result
   end
 

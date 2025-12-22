@@ -277,4 +277,38 @@ class TestLayerStack < Minitest::Test
     close_codes = @stack.diffpop
     assert_includes close_codes, 22  # reset back to base
   end
+
+  def test_layer_tag_attribute
+    layer = Gouache::Layer.from(1, 31)
+    @stack.diffpush(layer, :test)
+
+    # Tagged layer in stack has tag
+    assert_equal :test, @stack.top.tag
+
+    # Layer is frozen after push
+    assert @stack.top.frozen?
+  end
+
+  def test_layer_tag_independent_of_layer_data
+    layer1 = Gouache::Layer.from(1)
+    layer2 = Gouache::Layer.from(1)
+
+    @stack.diffpush(layer1, :first)
+    @stack.diffpush(layer2, :second)
+
+    # Tags are independent
+    assert_equal :first, @stack[-2].tag
+    assert_equal :second, @stack.top.tag
+
+    # Layer data is still equal (excluding tag)
+    assert_equal @stack[-2].to_a, @stack.top.to_a
+  end
+
+  def test_base_layer_frozen_and_nil_tag
+    # Base layer should be frozen
+    assert @stack.base.frozen?
+
+    # Base layer should have nil tag
+    assert_nil @stack.base.tag
+  end
 end

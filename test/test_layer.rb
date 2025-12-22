@@ -657,4 +657,6 @@ class TestLayer < Minitest::Test
     assert_raises(TypeError) { layer.overlay(123) }
     assert_raises(TypeError) { layer.overlay([1, 2, 3]) }
   end
+
+
 end

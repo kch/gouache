@@ -2,25 +2,23 @@ require_relative "layer"
 
 class Gouache
 
+  module LayerTags
+    attr_accessor :tag
+  end
+
   class LayerStack < Array
-
-    using Module.new {
-      refine Layer do
-        attr_accessor :tag
-      end
-    }
-
     alias top last
     alias base first
     def base? = size == 1
     def under = self[-2]
 
     def initialize
-      super [Layer::BASE]
+      super [Layer::BASE.dup.extend(LayerTags).freeze]
     end
 
     def diffpush layer, tag=nil
       self << top.overlay(layer)
+      top.extend LayerTags
       top.tag = tag
       top.freeze
       top.diff(under)

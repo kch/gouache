@@ -15,6 +15,7 @@ class Gouache
   WRAP_CLOSE = [OSC, CODE, 2, ST].join
   RX_ESC_LA  = /(?=\e)/
   RX_SGR     = /#{Regexp.escape(CSI)}[;\d]*m/
+  RX_UNPAINT = Regexp.union RX_SGR, WRAP_OPEN, WRAP_CLOSE
 
   attr :rules
 
@@ -22,6 +23,8 @@ class Gouache
 
   class << self
     def scan_sgr(s) = s.scan(/([34]8;(?:5;\d+|2(?:;\d+){3}))|(\d+)/).map{|s,d| s ? s : d.to_i }
+
+    def unpaint(s) = s.gsub(RX_UNPAINT, "")
 
     def wrap(s) = s.wrap
     alias embed wrap
@@ -47,6 +50,7 @@ class Gouache
   end
 
   def repaint(s) = mk_emitter.tap{ Builder.safe_emit_sgr(s, emitter: it) }.emit!
+  def unpaint(s) = self.class.unpaint(s)
   def mk_emitter = Emitter.new(instance: self)
   def wrap(s) = s.wrap
   alias embed wrap

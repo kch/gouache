@@ -308,4 +308,193 @@ class TestBuilder < Minitest::Test
     # Only the top-level should return the emitted string
     assert_equal "\e[34mcontent\e[33;9mnested\e[31;29mfinal_content\e[0m", result
   end
+
+  def test_builder_method_with_simple_array
+    # Basic array of strings passed to builder method
+    result = @gouache.red(["hello", "world"])
+    assert_equal "\e[31mhelloworld\e[0m", result
+  end
+
+  def test_builder_method_with_array_containing_symbols
+    # Array with symbol tags should nest properly within builder method context
+    result = @gouache.red([:bold, "text"])
+    assert_equal "\e[31;22;1mtext\e[0m", result
+  end
+
+  def test_builder_method_with_nested_arrays
+    # Deeply nested array structures should flatten and compile correctly
+    result = @gouache.red([["nested", [:bold, "text"]]])
+    assert_equal "\e[31mnested\e[22;1mtext\e[0m", result
+  end
+
+  def test_builder_method_mixed_string_and_array
+    # Builder methods should accept mixed string and array arguments
+    result = @gouache.red("prefix", [:bold, "bold"])
+    assert_equal "\e[31mprefix\e[22;1mbold\e[0m", result
+  end
+
+  def test_builder_method_with_chained_arrays
+    # Chained builder methods should handle arrays with proper style combination
+    result = @gouache.red.bold([:italic, "text"])
+    assert_equal "\e[31;3;22;1mtext\e[0m", result
+  end
+
+  def test_builder_method_with_complex_nested_array
+    # Complex array: strings, symbols, nested arrays with multiple style changes
+    array = ["start", [:bold, "bold"], "middle", [:red, [:italic, "nested"]], "end"]
+    result = @gouache.green(array)
+    assert_equal "\e[32mstart\e[22;1mbold\e[22mmiddle\e[31;3mnested\e[32;23mend\e[0m", result
+  end
+
+  def test_builder_method_with_deeply_nested_arrays
+    # 4-level deep array nesting should flatten and compile correctly
+    array = [[[[:bold, "deep"]]]]
+    result = @gouache.red(array)
+    assert_equal "\e[31;22;1mdeep\e[0m", result
+  end
+
+  def test_builder_method_with_multiple_arrays
+    # Multiple separate array arguments should be processed sequentially
+    result = @gouache.blue(["first", "part"], [:bold, "second"], ["third"])
+    assert_equal "\e[34mfirstpart\e[22;1msecond\e[22mthird\e[0m", result
+  end
+
+  def test_builder_method_with_empty_arrays
+    # Empty arrays should be ignored, only actual content should render
+    result = @gouache.red([], "content", [[]], [:bold, []])
+    assert_equal "\e[31mcontent\e[0m", result
+  end
+
+  def test_builder_method_with_array_in_block
+    # Arrays passed to builder methods within block context
+    result = @gouache.red {|x|
+      x.blue([:bold, "nested"])     # Array with symbol in nested method call
+      x << "plain"                  # Plain append for comparison
+    }
+    assert_equal "\e[34;22;1mnested\e[31;22mplain\e[0m", result
+  end
+
+  def test_builder_method_with_alternating_symbols_in_array
+    # Array with alternating symbols and content: symbol applies to following content
+    array = [:bold, "one", :italic, "two", :underline, "three"]
+    result = @gouache.red(array)
+    assert_equal "\e[31;22;1mone\e[3mtwo\e[4mthree\e[0m", result
+  end
+
+  def test_builder_method_with_mixed_types_in_array
+    # Array with various types: numbers, symbols, nil, booleans, strings
+    array = [123, :bold, nil, true, "text"]  # nil should be filtered out
+    result = @gouache.green(array)
+    assert_equal "\e[32m123\e[22;1mtruetext\e[0m", result
+  end
+
+  def test_builder_method_array_vs_direct_compilation
+    # Builder method with array should match direct bracket compilation
+    array = [:bold, "text", :red, "more"]     # Same array structure
+    builder_result = @gouache.green(array)    # Via builder method
+    direct_result = @gouache[:green, array]   # Via direct compilation
+    assert_equal direct_result, builder_result
+    assert_equal "\e[32;22;1mtext\e[31mmore\e[0m", builder_result
+  end
+
+  def test_builder_method_with_nested_builder_calls_in_array
+    # Array containing pre-compiled styled strings should handle SGR sequences
+    nested_content = @gouache[:italic, "italic_text"]  # Pre-compiled with escape codes
+    array = ["prefix", nested_content, "suffix"]       # Mixed with plain strings
+    result = @gouache.red(array)
+    expected = "\e[31mprefix\e[3mitalic_text\e[31;23msuffix\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_builder_chaining_with_array_and_block
+    # Chained builder with both array argument and block
+    result = @gouache.red.bold([:italic, "array_content"]) {|x|  # Array in chained call
+      x.underline("block_content")                               # Block adds more content
+    }
+    expected = "\e[31;3;22;1marray_content\e[23;4mblock_content\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_builder_method_with_symbol_chain_array
+    # Array with multiple consecutive symbols should auto-nest: [:bold, [:italic, [:underline, "text"]]]
+    array = [:bold, :italic, :underline, "chained_styles"]
+    result = @gouache.red(array)
+    assert_equal "\e[31;3;4;22;1mchained_styles\e[0m", result
+  end
+
+  def test_builder_method_with_array_in_nested_blocks
+    # Arrays in deeply nested block contexts with multiple style changes
+    result = @gouache.red {|x|
+      x.blue([:bold, "blue_bold"])               # Array with symbol in 2nd level
+      x.green {|y|                               # 3rd nesting level
+        y.yellow([:italic, "yellow_italic"])     # Array with symbol in 4th level
+        y.magenta(["plain", :underline, "underlined"])  # Mixed array content
+      }
+    }
+    expected = "\e[34;22;1mblue_bold\e[33;3;22myellow_italic\e[35;23mplain\e[4munderlined\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_builder_method_with_complex_array_in_block
+    # Complex array structure: strings, symbols, nested arrays within block context
+    result = @gouache.red {|x|
+      array = ["start", [:bold, "bold_part"], :italic, "italic_part", ["nested", [:underline, "under"]]]
+      x.blue(array)                             # Pass entire complex array to method
+      x << "final"                              # Append plain content
+    }
+    expected = "\e[34mstart\e[22;1mbold_part\e[3;22mitalic_partnested\e[4munder\e[31;23;24mfinal\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_builder_method_with_array_containing_block_results
+    # Array containing pre-built styled content from other builder calls
+    inner = @gouache.red {|x| x.bold("inner") }         # Pre-built content with escape codes
+    array = ["prefix", inner, "suffix"]                 # Mix with plain strings
+    result = @gouache.green(array)
+    expected = "\e[32mprefix\e[31;22;1minner\e[32;22msuffix\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_builder_method_array_with_chained_methods_in_block
+    # Chained builder methods with array argument within block context
+    result = @gouache.red {|x|
+      x.blue.bold([:italic, "chained_with_array"])  # Chain + array in block
+    }
+    expected = "\e[34;3;22;1mchained_with_array\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_builder_method_multiple_arrays_in_block
+    # Multiple method calls with different array structures in same block
+    result = @gouache.red {|x|
+      x.blue(["first"], [:bold, "second"])      # Multiple arrays to same call
+      x.green([[:italic, "third"]], "fourth")   # Nested array + string
+    }
+    expected = "\e[34mfirst\e[22;1msecond\e[32;3;22mthird\e[23mfourth\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_builder_method_array_and_append_in_block
+    # Mix of builder method calls with arrays and direct append operator
+    result = @gouache.red {|x|
+      x.blue([:bold, "from_array"])                         # Method call with array
+      x << ["appended_array", :italic, "italic_appended"]   # Append operator treats array as string
+    }
+    expected = "\e[34;22;1mfrom_array\e[31;22m[\"appended_array\", :italic, \"italic_appended\"]\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_builder_method_deep_nesting_with_arrays
+    # Deep block nesting (3 levels) with arrays at different levels
+    result = @gouache.red {|a|                              # Level 1: red context
+      a.blue {|b|                                           # Level 2: blue context
+        b.green([:bold, "deep_bold"])                       # Array in level 3 method
+        b.yellow {|c|                                       # Level 3: yellow context
+          c.magenta([[:italic, "very_deep"], "plain"])      # Complex nested array
+        }
+      }
+    }
+    expected = "\e[32;22;1mdeep_bold\e[35;3;22mvery_deep\e[23mplain\e[0m"
+    assert_equal expected, result
+  end
 end

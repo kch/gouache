@@ -133,7 +133,7 @@ class TestLayerStack < Minitest::Test
     assert @stack.base?
   end
 
-  def test_stack_diffpop_until_tag_with_tagged_layer
+  def test_stack_diffpop_until_with_tagged_layer
     layer1 = Gouache::Layer.from(1)
     layer2 = Gouache::Layer.from(31)
     layer3 = Gouache::Layer.from(4)
@@ -143,14 +143,14 @@ class TestLayerStack < Minitest::Test
     @stack.diffpush(layer3)
     assert_equal 4, @stack.size
 
-    result = @stack.diffpop_until_tag
+    result = @stack.diffpop_until{ it.top.tag }
 
     # Should pop back to the tagged layer (layer1)
     assert_equal 2, @stack.size
     assert_kind_of Array, result
   end
 
-  def test_stack_diffpop_until_tag_without_tagged_layer
+  def test_stack_diffpop_until_without_tagged_layer
     layer1 = Gouache::Layer.from(1)  # no tag
     layer2 = Gouache::Layer.from(31) # no tag
     layer3 = Gouache::Layer.from(4)  # no tag
@@ -160,14 +160,14 @@ class TestLayerStack < Minitest::Test
     @stack.diffpush(layer3)
     assert_equal 4, @stack.size
 
-    @stack.diffpop_until_tag
+    @stack.diffpop_until{ it.top.tag }
 
     # Should pop all the way to base since no tags
     assert_equal 1, @stack.size
     assert @stack.base?
   end
 
-  def test_stack_diffpop_until_tag_complex_scenario
+  def test_stack_diffpop_until_complex_scenario
     # BASE -> tagged1 -> untagged1 -> untagged2 -> tagged2 -> untagged3
     tagged1 = Gouache::Layer.from(1)
     untagged1 = Gouache::Layer.from(31)
@@ -183,11 +183,11 @@ class TestLayerStack < Minitest::Test
     assert_equal 6, @stack.size
 
     # Pop from untagged3 - should go to tagged2
-    @stack.diffpop_until_tag
+    @stack.diffpop_until{ it.top.tag }
     assert_equal 5, @stack.size
 
-    # Now top is tagged2 - diffpop_until_tag should return early (no pop)
-    result = @stack.diffpop_until_tag
+    # Now top is tagged2 - diffpop_until should return early (no pop)
+    result = @stack.diffpop_until{ it.top.tag }
     assert_equal 5, @stack.size  # Should stay the same
     assert_equal [], result      # Should return empty array
 
@@ -196,16 +196,16 @@ class TestLayerStack < Minitest::Test
     assert_equal 4, @stack.size
 
     # Now pop until tagged1
-    @stack.diffpop_until_tag
+    @stack.diffpop_until{ it.top.tag }
     assert_equal 2, @stack.size
   end
 
-  def test_stack_diffpop_until_tag_conditional_logic
+  def test_stack_diffpop_until_conditional_logic
     # Test early return when top is already tagged
     tagged = Gouache::Layer.from(1)
     @stack.diffpush(tagged, :stop)
 
-    result = @stack.diffpop_until_tag
+    result = @stack.diffpop_until{ it.top.tag }
     assert_equal 2, @stack.size  # Should not pop anything
     assert_equal [], result      # Should return empty array
 
@@ -220,7 +220,7 @@ class TestLayerStack < Minitest::Test
     @stack.diffpush(untagged2)
     assert_equal 4, @stack.size
 
-    @stack.diffpop_until_tag
+    @stack.diffpop_until{ it.top.tag }
     assert_equal 2, @stack.size  # Should stop at tagged layer
 
     # Test popping all untagged to base
@@ -231,9 +231,29 @@ class TestLayerStack < Minitest::Test
     @stack.diffpush(untagged1)
     @stack.diffpush(untagged2)
 
-    @stack.diffpop_until_tag
+    @stack.diffpop_until{ it.top.tag }
     assert_equal 1, @stack.size  # Should pop all the way to base
     assert @stack.base?
+  end
+
+  def test_stack_diffpop_until_custom_condition
+    # Test using diffpop_until with a condition other than tag
+    layer1 = Gouache::Layer.from(1)   # bold
+    layer2 = Gouache::Layer.from(31)  # red fg
+    layer3 = Gouache::Layer.from(4, 32)   # underline + green fg
+    layer4 = Gouache::Layer.from(2, 33)   # dim + yellow fg
+
+    @stack.diffpush(layer1)
+    @stack.diffpush(layer2)
+    @stack.diffpush(layer3)
+    @stack.diffpush(layer4)
+    before_size = @stack.size
+
+    # Pop until we find a layer with red foreground (31)
+    result = @stack.diffpop_until{ it.top[0] == 31 }
+    after_size = @stack.size
+    assert_equal before_size - 2, after_size  # Should reduce by 2
+    assert_kind_of Array, result
   end
 
   def test_stack_empty_layer_handling

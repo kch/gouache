@@ -32,10 +32,11 @@ class Gouache
       top.diff(oldpop)
     end
 
-    def diffpop_until_tag
-      return [] if top.tag
+    # pops until but not including cond
+    def diffpop_until(&cond)
+      return [] if cond[self]
       oldtop = top
-      pop while top.tag.nil? && !base?
+      pop until base? || cond[self]
       top.diff(oldtop)
     end
 

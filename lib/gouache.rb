@@ -39,6 +39,9 @@ class Gouache
   def enabled?   = @enabled.nil? ? io.tty? : @enabled
   def reopen(io) = tap{ @io = io }
 
+  def puts(*x)   = io.puts(*x.map{  String === it ? repaint(it) : it })
+  def print(*x)  = io.print(*x.map{ String === it ? repaint(it) : it })
+
   def mk_emitter = Emitter.new(instance: self)
   def repaint(s) = enabled? ? mk_emitter.tap{ Builder.safe_emit_sgr(s, emitter: it) }.emit! : unpaint(s)
   def unpaint(s) = self.class.unpaint(s)

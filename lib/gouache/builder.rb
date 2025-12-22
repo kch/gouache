@@ -31,9 +31,8 @@ class Gouache
         return nil
       end
 
-      ss = StringScanner.new s
-      wraps = 1
-      emitter.begin_sgr
+      ss = StringScanner.new s.wrap
+      wraps = 0
       while text = ss.scan_until(RX_ESC_LA)
         emitter << text
         case

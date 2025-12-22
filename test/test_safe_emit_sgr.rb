@@ -31,10 +31,10 @@ class TestSafeEmitSgr < Minitest::Test
   end
 
   def test_manual_sgr_does_not_leak_to_tags
-    # Unclosed SGR should be cleaned up and not affect subsequent tags
-    text_with_unclosed_sgr = "start \e[31mred text"
-    result = @go[text_with_unclosed_sgr, :bold, "should be bold not red"]
-    expected = "start \e[39mred text\e[22;1mshould be bold not red\e[0m"  # 31 cleaned with 39
+    # Valid SGR should be preserved and not affect subsequent tags
+    text_with_sgr = "start \e[31mred text"
+    result = @go[text_with_sgr, :bold, "should be bold not red"]
+    expected = "start \e[31mred text\e[39;22;1mshould be bold not red\e[0m"  # 31 preserved, reset to default, then bold applied
     assert_equal expected, result
   end
 

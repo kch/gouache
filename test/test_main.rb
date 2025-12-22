@@ -56,7 +56,6 @@ class TestMain < Minitest::Test
 
   def test_delegated_enable_method
     # Gouache.enable should delegate to MAIN
-    original_enabled = Gouache::MAIN.enabled?
     result = Gouache.enable
     assert_equal Gouache::MAIN, result
     assert_equal true, Gouache::MAIN.enabled?

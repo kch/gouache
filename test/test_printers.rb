@@ -15,7 +15,7 @@ class TestPrinters < Minitest::Test
     out, _err = capture_io do
       @go.puts("text with \e[31mred\e[0m content")
     end
-    expected = "text with \e[31mred\e[39m content\e[0m\n"
+    expected = "text with \e[31mred\e[0m content\n"
     assert_equal expected, out
   end
 
@@ -86,7 +86,7 @@ class TestPrinters < Minitest::Test
 
     custom_io.rewind
     result = custom_io.read
-    expected = "styled \e[31mred\e[39m text\e[0m\n"
+    expected = "styled \e[31mred\e[0m text\n"
     assert_equal expected, result
   end
 
@@ -116,7 +116,7 @@ class TestPrinters < Minitest::Test
     out, _err = capture_io do
       @go.print("text with \e[31mred\e[0m content")
     end
-    expected = "text with \e[31mred\e[39m content\e[0m"
+    expected = "text with \e[31mred\e[0m content"
     assert_equal expected, out
   end
 
@@ -186,7 +186,7 @@ class TestPrinters < Minitest::Test
 
     custom_io.rewind
     result = custom_io.read
-    expected = "styled \e[31mred\e[39m text\e[0m"
+    expected = "styled \e[31mred\e[0m text"
     assert_equal expected, result
   end
 
@@ -219,7 +219,7 @@ class TestPrinters < Minitest::Test
       @go.print("middle ")
       @go.puts("line2")
     end
-    expected = "start \e[31mred\e[39m \e[0m" +
+    expected = "start \e[31mred\e[0m " +
                "line1 \e[32mgreen\e[0m\n" +
                "middle " +
                "line2\n"

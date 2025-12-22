@@ -11,6 +11,7 @@ class Gouache
   CSI        = "\e["
   ST         = "\e\\"
   CODE       = "971"
+  WRAP_SEQ   = [OSC, CODE].join
   WRAP_OPEN  = [OSC, CODE, 1, ST].join
   WRAP_CLOSE = [OSC, CODE, 2, ST].join
   RX_ESC_LA  = /(?=\e)/
@@ -39,8 +40,15 @@ class Gouache
   def enabled?   = @enabled.nil? ? io.tty? : @enabled
   def reopen(io) = tap{ @io = io }
 
-  def puts(*x)   = io.puts(*x.map{  String === it ? repaint(it) : it })
-  def print(*x)  = io.print(*x.map{ String === it ? repaint(it) : it })
+  private def printable(x)
+    return x unless x.is_a? String
+    return unpaint(x) unless enabled?
+    return repaint(x) if x.include?(WRAP_SEQ)
+    return x
+  end
+
+  def puts(*x)   = io.puts(*x.map{  printable it })
+  def print(*x)  = io.print(*x.map{ printable it })
 
   def mk_emitter = Emitter.new(instance: self)
   def repaint(s) = enabled? ? mk_emitter.tap{ Builder.safe_emit_sgr(s, emitter: it) }.emit! : unpaint(s)

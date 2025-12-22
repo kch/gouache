@@ -19,22 +19,25 @@ class Gouache
 
   attr :rules
 
-  using Wrap
-
   class << self
+    using Wrap
     def scan_sgr(s) = s.scan(/([34]8;(?:5;\d+|2(?:;\d+){3}))|(\d+)/).map{|s,d| s ? s : d.to_i }
-
-    def unpaint(s) = s.gsub(RX_UNPAINT, "")
-
-    def wrap(s) = s.wrap
+    def unpaint(s)  = s.gsub(RX_UNPAINT, "")
+    def wrap(s)     = s.wrap
     alias embed wrap
   end
 
   def initialize(styles:{}, io:nil, enabled:nil, **kvstyles)
-    @io = io
+    @io      = io
     @enabled = enabled
-    @rules = Stylesheet::BASE.merge(styles, kvstyles)
+    @rules   = Stylesheet::BASE.merge(styles, kvstyles)
   end
+
+  def mk_emitter = Emitter.new(instance: self)
+  def repaint(s) = mk_emitter.tap{ Builder.safe_emit_sgr(s, emitter: it) }.emit!
+  def unpaint(s) = self.class.unpaint(s)
+  def wrap(s)    = self.class.wrap(s)
+  alias embed wrap
 
   def method_missing(m, ...)
     Builder::Proxy.for(self, m, ...) || super
@@ -48,11 +51,5 @@ class Gouache
     raise ArgumentError unless block_given?
     Builder::Proxy.for(self, nil, ...)
   end
-
-  def repaint(s) = mk_emitter.tap{ Builder.safe_emit_sgr(s, emitter: it) }.emit!
-  def unpaint(s) = self.class.unpaint(s)
-  def mk_emitter = Emitter.new(instance: self)
-  def wrap(s) = s.wrap
-  alias embed wrap
 
 end

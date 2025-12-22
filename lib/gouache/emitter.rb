@@ -5,7 +5,6 @@ class Gouache
   class Emitter
 
     def initialize(instance:)
-      @tags    = []             # used for sanity checking so sgr doesn't cross tag boundaries, can't close unopen tag, etc
       @rules   = instance.rules # stylesheet
       @layers  = LayerStack.new # each tag or bare sgr emitted generates a layer
       @flushed = @layers.base   # keep layer state after each flush so next flush can diff against it
@@ -14,30 +13,23 @@ class Gouache
       @out     = +""
     end
 
-    def open_tag(tag)
-      raise "open_tag called with sgr on top of stack" if @tags.size > 0 && @tags.last.nil?
-      @tags << tag
-      @queue << @layers.diffpush(@rules[tag], tag)
+    def enqueue(sgr)       = (@queue << sgr; self)
+    def open_tag(tag)      = enqueue @layers.diffpush(@rules[tag], tag)
+    def begin_sgr          = enqueue @layers.diffpush(nil, :@@sgr)
+    def push_sgr(sgr_text) = enqueue @layers.diffpush(Layer.from Gouache.scan_sgr sgr_text)
+
+    def end_sgr
+      sgr_begun = @layers.reverse_each.find{ it.tag != nil }&.tag == :@@sgr
+      enqueue @layers.diffpop_until{ it.top.tag == :@@sgr } if sgr_begun
+      enqueue @layers.diffpop if @layers.top.tag == :@@sgr
       self
     end
 
     def close_tag
-      raise "close_tag called without open tag on top of stack" if @tags.pop.nil?
-      @queue << @layers.diffpop
-      self
-    end
-
-    def push_sgr(sgr_text)
-      @tags << nil
-      @queue << @layers.diffpush(Layer.from Gouache.scan_sgr sgr_text)
-      self
-    end
-
-    def pop_sgr
-      raise "pop_sgr called on empty stack" if @tags.empty?
-      raise "pop_sgr called with open tag on top of stack" unless @tags.pop.nil?
-      @queue << @layers.diffpop_until_tag
-      self
+      top_is_tag = ->{ not it.top.tag in nil | :@@sgr }
+      top_is_tag[@layers] or enqueue @layers.diffpop_until(&top_is_tag)
+      top_is_tag[@layers] or raise "attempted to close tag without open tag"
+      enqueue @layers.diffpop
     end
 
     def << s

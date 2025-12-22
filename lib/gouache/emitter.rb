@@ -67,5 +67,24 @@ class Gouache
 
     alias to_s emit!
 
+
+    def pretty_print(pp)
+      fmt_layer = ->l{ "   [ %s ] %s" % [l.map{ "%2s" % it.to_s }.join(" "), l.tag] }
+      pp.group(1, "#<#{self.class}", ">") do
+        pp.breakable
+        pp.text "@layers =\n"
+        pp.text @layers.map(&fmt_layer).join("\n")
+        pp.breakable
+        pp.text "@flushed =\n"
+        pp.text fmt_layer[@flushed]
+        pp.breakable
+        pp.text "@queue = "
+        pp.pp @queue
+        pp.breakable
+        pp.text "@out = "
+        pp.pp @out
+      end
+    end
+
   end
 end

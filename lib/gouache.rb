@@ -5,6 +5,7 @@ require_relative "gouache/stylesheet"
 require_relative "gouache/emitter"
 require_relative "gouache/builder"
 require_relative "gouache/wrap"
+require_relative "gouache/term"
 require "forwardable"
 
 class Gouache

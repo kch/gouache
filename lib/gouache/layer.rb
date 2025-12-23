@@ -62,7 +62,7 @@ class Gouache
       diff
     end
 
-    # reutrn array of codes to emit for layer
+    # return array of codes to emit for layer
     def to_sgr = self.class.prepare_sgr self
 
   end

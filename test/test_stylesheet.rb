@@ -5,6 +5,18 @@ require_relative "test_helper"
 class TestStylesheet < Minitest::Test
   def setup
     @ss = Gouache::Stylesheet::BASE
+
+    # Stub color_level to truecolor for consistent test behavior
+    Gouache::Term.singleton_class.alias_method :color_level_original, :color_level
+    Gouache::Term.singleton_class.undef_method :color_level
+    Gouache::Term.singleton_class.define_method(:color_level) { :truecolor }
+  end
+
+  def teardown
+    # Restore original method
+    Gouache::Term.singleton_class.undef_method :color_level
+    Gouache::Term.singleton_class.alias_method :color_level, :color_level_original
+    Gouache::Term.singleton_class.undef_method :color_level_original
   end
 
   def test_stylesheet_initialization_empty_and_nil_cases

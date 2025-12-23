@@ -112,8 +112,8 @@ class TestGouache < Minitest::Test
     assert_equal false, go.enabled?
   end
 
-  def test_enabled_checks_tty_when_nil
-    # enabled? should check io.tty? when @enabled is nil
+  def test_enabled_checks_tty_and_term_when_nil
+    # enabled? should check io.tty? && ENV["TERM"] != "dumb" when @enabled is nil
     require 'stringio'
 
     # Mock a non-TTY IO
@@ -123,12 +123,23 @@ class TestGouache < Minitest::Test
     go = Gouache.new(io: non_tty_io)
     assert_equal false, go.enabled?
 
-    # Mock a TTY IO
+    # Mock a TTY IO with normal TERM
     tty_io = StringIO.new
     def tty_io.tty? = true
 
-    go2 = Gouache.new(io: tty_io)
-    assert_equal true, go2.enabled?
+    original_term = ENV["TERM"]
+    begin
+      ENV["TERM"] = "xterm"
+      go2 = Gouache.new(io: tty_io)
+      assert_equal true, go2.enabled?
+
+      # TTY but TERM=dumb should be false
+      ENV["TERM"] = "dumb"
+      go3 = Gouache.new(io: tty_io)
+      assert_equal false, go3.enabled?
+    ensure
+      ENV["TERM"] = original_term
+    end
   end
 
   def test_reopen_changes_io
@@ -148,19 +159,26 @@ class TestGouache < Minitest::Test
     # reopen should affect enabled? behavior via new IO's tty? method
     require 'stringio'
 
-    # Start with non-TTY
-    non_tty = StringIO.new
-    def non_tty.tty? = false
+    original_term = ENV["TERM"]
+    begin
+      ENV["TERM"] = "xterm"
 
-    go = Gouache.new(io: non_tty)
-    assert_equal false, go.enabled?
+      # Start with non-TTY
+      non_tty = StringIO.new
+      def non_tty.tty? = false
 
-    # Reopen with TTY
-    tty_io = StringIO.new
-    def tty_io.tty? = true
+      go = Gouache.new(io: non_tty)
+      assert_equal false, go.enabled?
 
-    go.reopen(tty_io)
-    assert_equal true, go.enabled?
+      # Reopen with TTY
+      tty_io = StringIO.new
+      def tty_io.tty? = true
+
+      go.reopen(tty_io)
+      assert_equal true, go.enabled?
+    ensure
+      ENV["TERM"] = original_term
+    end
   end
 
 

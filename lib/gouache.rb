@@ -53,7 +53,7 @@ class Gouache
   def io         = @io || $stdout
   def enable     = tap{ @enabled = true }
   def disable    = tap{ @enabled = false }
-  def enabled?   = @enabled.nil? ? io.tty? : @enabled
+  def enabled?   = !@enabled.nil? ? @enabled : io.tty? && ENV["TERM"] != "dumb"
   def reopen(io) = tap{ @io = io }
   def puts(*x)   = io.puts(*x.map{  printable it })
   def print(*x)  = io.print(*x.map{ printable it })

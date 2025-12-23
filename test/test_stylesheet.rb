@@ -410,10 +410,6 @@ class TestStylesheet < Minitest::Test
     result = ss.tags
     assert_kind_of Array, result
 
-    # Should exclude selectors containing spaces
-    refute_includes result, :"with space"
-    refute_includes result, :"multi word"
-
     # Should include selectors without spaces
     assert_includes result, :simple
     assert_includes result, :compound

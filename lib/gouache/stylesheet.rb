@@ -68,7 +68,7 @@ class Gouache
 
     def to_h = @layer_map.transform_values{ it.compact.uniq.then{ it.size == 1 ? it[0] : it } }
 
-    def tags = @layer_map.keys.grep_v(/ /)
+    def tags = @layer_map.keys
 
     BASE = new BASE_STYLES, base: nil
   end

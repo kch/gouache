@@ -1,27 +1,36 @@
 class Gouache
 
   class Layer < Array
-    class MixedRange
-      attr :off
-      def initialize(xs) = (@off = xs.last; @ranges = xs.map{ Range === it ? it : it..it })
-      def [](x)          = @ranges.any?{ it.include? x }
+    class LayerRange
+      attr :label, :index, :off
+
+      def initialize(xs, label:, index:)
+        @label  = label
+        @index  = index
+        @off    = xs.last
+        @ranges = xs.map{ Range === it ? it : it..it }
+      end
+
+      def [](x) = @ranges.any?{ it.include? x }
     end
 
-    RANGES = [
-      [30..39, 90..97, 39],   # fg
-      [40..49, 100..107, 49], # bg
-      [ 3, 23],               # italic
-      [ 5, 25],               # blink
-      [ 7, 27],               # inverse
-      [ 8, 28],               # hidden
-      [ 9, 29],               # strike
-      [53, 55],               # overline
-      [ 4, 21, 24],           # underline, double_underline
-      [ 1, 22],               # bold
-      [ 2, 22],               # dim
-    ].map{ MixedRange.new it }
+    RANGES = { # ends as [LayerRange, ...] using the hash values; keys get used for label
+      fg:        [30..39, 90..97, 39],   # fg
+      bg:        [40..49, 100..107, 49], # bg
+      italic:    [ 3, 23],               # italic
+      blink:     [ 5, 25],               # blink
+      inverse:   [ 7, 27],               # inverse
+      hidden:    [ 8, 28],               # hidden
+      strike:    [ 9, 29],               # strike
+      overline:  [53, 55],               # overline
+      underline: [ 4, 21, 24],           # underline, double_underline
+      bold:      [ 1, 22],               # bold
+      dim:       [ 2, 22],               # dim
+    }.zip(0..).map do |(k, xs), i|
+      LayerRange.new xs, index: i, label: k
+    end
 
-    def RANGES.for(x) = zip(0..).filter_map{|r,i| i if r[x] }.then{ it if it.any? }
+    def RANGES.for(x) = filter_map{|r| r.index if r[x] }.then{ it if it.any? }
 
     BASE = new(RANGES.map(&:off)).freeze
 

@@ -291,8 +291,8 @@ class TestLayer < Minitest::Test
     assert_equal [], sgr
   end
 
-  def test_mixed_range_functionality
-    # Test that MixedRange properly categorizes SGR codes
+  def test_layer_range_functionality
+    # Test that LayerRange properly categorizes SGR codes
     fg_range = Gouache::Layer::RANGES[0]  # foreground colors
 
     assert fg_range[31]  # red
@@ -422,7 +422,7 @@ class TestLayer < Minitest::Test
     assert_includes result, 1
   end
 
-  def test_mixed_range_with_rgb_strings
+  def test_layer_range_with_rgb_strings
     fg_range = Gouache::Layer::RANGES[0]  # foreground colors
     bg_range = Gouache::Layer::RANGES[1]  # background colors
 
@@ -521,20 +521,24 @@ class TestLayer < Minitest::Test
 
 
 
-  def test_mixed_range_initialization
+  def test_layer_range_initialization
     # Test with ranges and integers
-    range = Gouache::Layer::MixedRange.new([30..39, 90..97, 39])
+    range = Gouache::Layer::LayerRange.new([30..39, 90..97, 39], label: :fg, index: 0)
     assert_equal 39, range.off
+    assert_equal :fg, range.label
+    assert_equal 0, range.index
   end
 
-  def test_mixed_range_initialization_single_values
+  def test_layer_range_initialization_single_values
     # Test with only single values
-    range = Gouache::Layer::MixedRange.new([1, 22])
+    range = Gouache::Layer::LayerRange.new([1, 22], label: :bold, index: 9)
     assert_equal 22, range.off
+    assert_equal :bold, range.label
+    assert_equal 9, range.index
   end
 
-  def test_mixed_range_bracket_method_with_ranges
-    range = Gouache::Layer::MixedRange.new([30..39, 90..97, 39])
+  def test_layer_range_bracket_method_with_ranges
+    range = Gouache::Layer::LayerRange.new([30..39, 90..97, 39], label: :fg, index: 0)
 
     # Test values within ranges
     assert range[31]  # in 30..39
@@ -549,8 +553,8 @@ class TestLayer < Minitest::Test
     refute range[98]  # after 90..97
   end
 
-  def test_mixed_range_bracket_method_with_single_values
-    range = Gouache::Layer::MixedRange.new([1, 22])
+  def test_layer_range_bracket_method_with_single_values
+    range = Gouache::Layer::LayerRange.new([1, 22], label: :bold, index: 9)
 
     # Test exact matches
     assert range[1]
@@ -565,9 +569,9 @@ class TestLayer < Minitest::Test
 
 
 
-  def test_mixed_range_bracket_method_mixed_types
+  def test_layer_range_bracket_method_mixed_types
     # Test with actual mix of ranges and single values
-    range = Gouache::Layer::MixedRange.new([30..39, 5, 25, 90..97, 39])
+    range = Gouache::Layer::LayerRange.new([30..39, 5, 25, 90..97, 39], label: :test, index: 99)
 
     # Test range values
     assert range[31]  # in 30..39
@@ -586,14 +590,14 @@ class TestLayer < Minitest::Test
     refute range[26]  # not included single
   end
 
-  def test_mixed_range_off_attribute
-    range1 = Gouache::Layer::MixedRange.new([30..39, 90..97, 39])
+  def test_layer_range_off_attribute
+    range1 = Gouache::Layer::LayerRange.new([30..39, 90..97, 39], label: :fg, index: 0)
     assert_equal 39, range1.off
 
-    range2 = Gouache::Layer::MixedRange.new([1, 22])
+    range2 = Gouache::Layer::LayerRange.new([1, 22], label: :bold, index: 9)
     assert_equal 22, range2.off
 
-    range3 = Gouache::Layer::MixedRange.new([4, 21, 24])
+    range3 = Gouache::Layer::LayerRange.new([4, 21, 24], label: :underline, index: 8)
     assert_equal 24, range3.off
   end
 

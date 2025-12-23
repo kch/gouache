@@ -206,7 +206,7 @@ class TestStylesheet < Minitest::Test
 
   def test_compute_decl_out_of_bounds_integer
     assert_raises(NoMatchingPatternError) {
-      @ss.send(:compute_decl, 0)    # Below valid range 1-107
+      @ss.send(:compute_decl, -1)    # Below valid range 1-107
     }
     assert_raises(NoMatchingPatternError) {
       @ss.send(:compute_decl, 108)  # Above valid range 1-107
@@ -602,7 +602,7 @@ class TestStylesheet < Minitest::Test
 
     # Invalid boundary values should raise errors
     invalid_cases = [
-      {sgr_zero: 0},           # Below SGR range
+      {sgr_lt_zero: -1},       # Below SGR range
       {sgr_high: 108},         # Above SGR range
       {d256_high: "256(256)"}, # Above 256-color range
       {d24_high: "gray(24)"},  # Above grayscale range

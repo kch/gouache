@@ -41,7 +41,7 @@ class Gouache
       in Layer    then x
       in Array    then x.flat_map{ compute_decl it }
       in Symbol   then compute_rule(x)
-      in 1..107   then x
+      in 0..107   then x
       in RX_INT   then x.to_i
       in RX_SGR   then Gouache.scan_sgr(x)
       in RX_RGB24 then [fbg[], 2, $2, $3, $4]*?;

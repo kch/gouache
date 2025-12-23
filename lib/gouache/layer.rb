@@ -12,7 +12,8 @@ class Gouache
         freeze
       end
 
-      def [](x) = @ranges.any?{ it.include? x }
+      def member?(x) = @ranges.any?{ it.member? x }
+      alias === member?
     end
 
     RANGES = { # ends as { k: LayerRange, ... }; keys get used for label too
@@ -32,7 +33,7 @@ class Gouache
     end
 
     # return array of RANGE indices that cover sgr code x
-    def RANGES.for(x) = values.filter_map{|r| r.index if r[x] }.then{ it if it.any? }
+    def RANGES.for(x) = values.filter_map{|r| r.index if r.member? x }.then{ it if it.any? }
     RANGES.freeze
 
     BASE = new(RANGES.values.map(&:off)).freeze

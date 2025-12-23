@@ -295,10 +295,10 @@ class TestLayer < Minitest::Test
     # Test that LayerRange properly categorizes SGR codes
     fg_range = Gouache::Layer::RANGES[:fg]  # foreground colors
 
-    assert fg_range[31]  # red
-    assert fg_range[39]  # reset
-    assert fg_range[91]  # bright red
-    refute fg_range[41]  # not foreground (background)
+    assert fg_range.member?(31)  # red
+    assert fg_range.member?(39)  # reset
+    assert fg_range.member?(91)  # bright red
+    refute fg_range.member?(41)  # not foreground (background)
   end
 
   def test_base_layer_values
@@ -427,10 +427,10 @@ class TestLayer < Minitest::Test
     bg_range = Gouache::Layer::RANGES[:bg]  # background colors
 
     # RGB/256-color strings should be recognized by their first number
-    assert fg_range["38;5;123".to_i]      # 38 -> foreground
-    assert fg_range["38;2;255;0;0".to_i]  # 38 -> foreground
-    assert bg_range["48;5;123".to_i]      # 48 -> background
-    assert bg_range["48;2;0;255;0".to_i]  # 48 -> background
+    assert fg_range.member?("38;5;123".to_i)      # 38 -> foreground
+    assert fg_range.member?("38;2;255;0;0".to_i)  # 38 -> foreground
+    assert bg_range.member?("48;5;123".to_i)      # 48 -> background
+    assert bg_range.member?("48;2;0;255;0".to_i)  # 48 -> background
   end
 
   def test_layer_from_with_empty_array
@@ -537,57 +537,57 @@ class TestLayer < Minitest::Test
     assert_equal 9, range.index
   end
 
-  def test_layer_range_bracket_method_with_ranges
+  def test_layer_range_member_method_with_ranges
     range = Gouache::Layer::LayerRange.new([30..39, 90..97, 39], label: :fg, index: 0)
 
     # Test values within ranges
-    assert range[31]  # in 30..39
-    assert range[35]  # in 30..39
-    assert range[91]  # in 90..97
-    assert range[95]  # in 90..97
+    assert range.member?(31)  # in 30..39
+    assert range.member?(35)  # in 30..39
+    assert range.member?(91)  # in 90..97
+    assert range.member?(95)  # in 90..97
 
     # Test values outside ranges
-    refute range[29]  # before 30..39
-    refute range[40]  # after 30..39 but before 90..97
-    refute range[89]  # before 90..97
-    refute range[98]  # after 90..97
+    refute range.member?(29)  # before 30..39
+    refute range.member?(40)  # after 30..39 but before 90..97
+    refute range.member?(89)  # before 90..97
+    refute range.member?(98)  # after 90..97
   end
 
-  def test_layer_range_bracket_method_with_single_values
+  def test_layer_range_member_method_with_single_values
     range = Gouache::Layer::LayerRange.new([1, 22], label: :bold, index: 9)
 
     # Test exact matches
-    assert range[1]
-    assert range[22]
+    assert range.member?(1)
+    assert range.member?(22)
 
     # Test non-matches
-    refute range[2]
-    refute range[21]
-    refute range[0]
-    refute range[23]
+    refute range.member?(2)
+    refute range.member?(21)
+    refute range.member?(0)
+    refute range.member?(23)
   end
 
 
 
-  def test_layer_range_bracket_method_mixed_types
+  def test_layer_range_member_method_mixed_types
     # Test with actual mix of ranges and single values
     range = Gouache::Layer::LayerRange.new([30..39, 5, 25, 90..97, 39], label: :test, index: 99)
 
     # Test range values
-    assert range[31]  # in 30..39
-    assert range[35]  # in 30..39
-    assert range[91]  # in 90..97
-    assert range[95]  # in 90..97
+    assert range.member?(31)  # in 30..39
+    assert range.member?(35)  # in 30..39
+    assert range.member?(91)  # in 90..97
+    assert range.member?(95)  # in 90..97
 
     # Test single values
-    assert range[5]   # single value
-    assert range[25]  # single value
+    assert range.member?(5)   # single value
+    assert range.member?(25)  # single value
 
     # Test non-matches
-    refute range[29]  # before 30..39
-    refute range[40]  # after 30..39 but before 90..97
-    refute range[6]   # not included single
-    refute range[26]  # not included single
+    refute range.member?(29)  # before 30..39
+    refute range.member?(40)  # after 30..39 but before 90..97
+    refute range.member?(6)   # not included single
+    refute range.member?(26)  # not included single
   end
 
   def test_layer_range_off_attribute
@@ -600,6 +600,23 @@ class TestLayer < Minitest::Test
     range3 = Gouache::Layer::LayerRange.new([4, 21, 24], label: :underline, index: 8)
     assert_equal 24, range3.off
   end
+
+  def test_layer_range_case_equality_alias
+    range = Gouache::Layer::LayerRange.new([30..39, 90..97, 39], label: :fg, index: 0)
+
+    # Test that === is aliased to member?
+    assert range === 31  # in 30..39
+    assert range === 35  # in 30..39
+    assert range === 91  # in 90..97
+    assert range === 95  # in 90..97
+
+    # Test values outside ranges
+    refute range === 29  # before 30..39
+    refute range === 40  # after 30..39 but before 90..97
+    refute range === 89  # before 90..97
+    refute range === 98  # after 90..97
+  end
+
 
   def test_layer_from_with_invalid_sgr_codes
     # Invalid SGR codes should be ignored (RANGES.for returns nil)

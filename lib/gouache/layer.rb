@@ -9,37 +9,40 @@ class Gouache
         @index  = index
         @off    = xs.last
         @ranges = xs.map{ Range === it ? it : it..it }
+        freeze
       end
 
       def [](x) = @ranges.any?{ it.include? x }
     end
 
-    RANGES = { # ends as [LayerRange, ...] using the hash values; keys get used for label
-      fg:        [30..39, 90..97, 39],   # fg
-      bg:        [40..49, 100..107, 49], # bg
-      italic:    [ 3, 23],               # italic
-      blink:     [ 5, 25],               # blink
-      inverse:   [ 7, 27],               # inverse
-      hidden:    [ 8, 28],               # hidden
-      strike:    [ 9, 29],               # strike
-      overline:  [53, 55],               # overline
-      underline: [ 4, 21, 24],           # underline, double_underline
-      bold:      [ 1, 22],               # bold
-      dim:       [ 2, 22],               # dim
-    }.zip(0..).map do |(k, xs), i|
-      LayerRange.new xs, index: i, label: k
+    RANGES = { # ends as { k: LayerRange, ... }; keys get used for label too
+      fg:        [30..39, 90..97, 39],
+      bg:        [40..49, 100..107, 49],
+      italic:    [ 3, 23],
+      blink:     [ 5, 25],
+      inverse:   [ 7, 27],
+      hidden:    [ 8, 28],
+      strike:    [ 9, 29],
+      overline:  [53, 55],
+      underline: [ 4, 21, 24], # underline + double_underline
+      bold:      [ 1, 22],
+      dim:       [ 2, 22],
+    }.zip(0..).to_h do |(k, xs), i|
+      [k, LayerRange.new(xs, index: i, label: k)]
     end
 
-    def RANGES.for(x) = filter_map{|r| r.index if r[x] }.then{ it if it.any? }
+    # return array of RANGE indices that cover sgr code x
+    def RANGES.for(x) = values.filter_map{|r| r.index if r[x] }.then{ it if it.any? }
+    RANGES.freeze
 
-    BASE = new(RANGES.map(&:off)).freeze
+    BASE = new(RANGES.values.map(&:off)).freeze
 
     # special handling for dim/bold
     # dim/bold turn on independently but are both turned off by 22
     # off code goes first so any on code actually applies
     def self.prepare_sgr(xs) = xs.compact.uniq.then{ [*it.delete(22), *it] }
 
-    def self.empty = new(RANGES.length, nil)
+    def self.empty = new(RANGES.size, nil)
 
     # create a new layer from the given sgr codes
     def self.from(*sgr_codes)

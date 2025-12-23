@@ -293,7 +293,7 @@ class TestLayer < Minitest::Test
 
   def test_layer_range_functionality
     # Test that LayerRange properly categorizes SGR codes
-    fg_range = Gouache::Layer::RANGES[0]  # foreground colors
+    fg_range = Gouache::Layer::RANGES[:fg]  # foreground colors
 
     assert fg_range[31]  # red
     assert fg_range[39]  # reset
@@ -423,8 +423,8 @@ class TestLayer < Minitest::Test
   end
 
   def test_layer_range_with_rgb_strings
-    fg_range = Gouache::Layer::RANGES[0]  # foreground colors
-    bg_range = Gouache::Layer::RANGES[1]  # background colors
+    fg_range = Gouache::Layer::RANGES[:fg]  # foreground colors
+    bg_range = Gouache::Layer::RANGES[:bg]  # background colors
 
     # RGB/256-color strings should be recognized by their first number
     assert fg_range["38;5;123".to_i]      # 38 -> foreground

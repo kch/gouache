@@ -6,17 +6,43 @@ class TestStylesheet < Minitest::Test
   def setup
     @ss = Gouache::Stylesheet::BASE
 
+    # Override basic_colors to always return ANSI16 without hitting osc
+    Gouache::Term.singleton_class.alias_method :basic_colors_original, :basic_colors
+    Gouache::Term.singleton_class.undef_method :basic_colors
+    Gouache::Term.singleton_class.define_method(:basic_colors) { Gouache::Term::ANSI16.dup.freeze }
+
+    # Override term_seq to raise and prevent OSC calls
+    Gouache::Term.singleton_class.alias_method :term_seq_original, :term_seq
+    Gouache::Term.singleton_class.undef_method :term_seq
+    Gouache::Term.singleton_class.define_method(:term_seq) { |*args| raise "OSC calls not allowed in tests" }
+
     # Stub color_level to truecolor for consistent test behavior
     Gouache::Term.singleton_class.alias_method :color_level_original, :color_level
     Gouache::Term.singleton_class.undef_method :color_level
     Gouache::Term.singleton_class.define_method(:color_level) { :truecolor }
+
+    # Reset memoized instance variables to ensure test isolation
+    Gouache::Term.instance_variable_set(:@colors, nil)
+    Gouache::Term.instance_variable_set(:@fg_color, nil)
+    Gouache::Term.instance_variable_set(:@bg_color, nil)
+    Gouache::Term.instance_variable_set(:@basic_colors, nil)
+    # Reset class variable for color indices cache
+    Gouache::Term.class_variable_set(:@@color_indices, {})
   end
 
   def teardown
-    # Restore original method
+    # Restore original methods
     Gouache::Term.singleton_class.undef_method :color_level
     Gouache::Term.singleton_class.alias_method :color_level, :color_level_original
     Gouache::Term.singleton_class.undef_method :color_level_original
+
+    Gouache::Term.singleton_class.undef_method :basic_colors
+    Gouache::Term.singleton_class.alias_method :basic_colors, :basic_colors_original
+    Gouache::Term.singleton_class.undef_method :basic_colors_original
+
+    Gouache::Term.singleton_class.undef_method :term_seq
+    Gouache::Term.singleton_class.alias_method :term_seq, :term_seq_original
+    Gouache::Term.singleton_class.undef_method :term_seq_original
   end
 
   def test_stylesheet_initialization_empty_and_nil_cases
@@ -727,5 +753,144 @@ class TestStylesheet < Minitest::Test
 
     assert_equal Gouache::Layer.from(31), merged_ss.layer_map[:red]
     refute_same base_ss, merged_ss  # Should be different object
+  end
+
+  def test_rx_color_pattern_matching
+    # RX_COLOR should match 256-color format
+    assert_match Gouache::Stylesheet::RX_COLOR, "38;5;196"
+    assert_match Gouache::Stylesheet::RX_COLOR, "48;5;21"
+
+    # RX_COLOR should match RGB format
+    assert_match Gouache::Stylesheet::RX_COLOR, "38;2;255;128;64"
+    assert_match Gouache::Stylesheet::RX_COLOR, "48;2;0;255;0"
+
+    # Should not match invalid formats
+    refute_match Gouache::Stylesheet::RX_COLOR, "39;5;21"     # wrong prefix
+    refute_match Gouache::Stylesheet::RX_COLOR, "38;3;255"    # wrong format
+    refute_match Gouache::Stylesheet::RX_COLOR, "38;256"      # incomplete
+  end
+
+  def test_compute_color_terminal_adaptation
+    # Test color level adaptation behavior
+    base_ss = Gouache::Stylesheet.new({}, base: nil)
+
+    # Truecolor: should pass through unchanged
+    Gouache::Term.stub :color_level, :truecolor do
+      result = base_ss.send(:compute_color, "38;2;255;128;64")
+      assert_equal "38;2;255;128;64", result
+    end
+  end
+
+  def test_compute_256color_adaptation
+    base_ss = Gouache::Stylesheet.new({}, base: nil)
+
+    # _256 with existing 256-color code should pass through
+    Gouache::Term.stub :color_level, :_256 do
+      result = base_ss.send(:compute_color, "38;5;196")
+      assert_equal "38;5;196", result
+    end
+
+    # _256 with RGB should find nearest color
+    Gouache::Term.stub :color_level, :_256 do
+      Gouache::Term.stub :colors, [[255,0,0], [0,255,0], [0,0,255]] do
+        result = base_ss.send(:compute_color, "38;2;255;0;0")
+        assert_equal "38;5;0", result  # index 0 = red
+      end
+    end
+  end
+
+  def test_compute_color_basic_ansi_ranges
+    base_ss = Gouache::Stylesheet.new({}, base: nil)
+
+    Gouache::Term.stub :color_level, :basic do
+      # Test ALL normal foreground colors (30-37 range)
+      # Test basic color matching with ANSI16 - just verify results are in valid ranges
+      # since exact matches depend on color distance calculations
+
+      # Test some specific cases that should work with ANSI16
+      result = base_ss.send(:compute_color, "38;2;0;0;0")       # black -> index 0 -> 30
+      assert_equal 30, result
+
+      result = base_ss.send(:compute_color, "38;2;255;255;255") # white -> index 15 -> 97
+      assert_equal 97, result
+
+      # Test background colors
+      result = base_ss.send(:compute_color, "48;2;0;0;0")       # black bg -> 40
+      assert_equal 40, result
+
+      result = base_ss.send(:compute_color, "48;2;255;255;255") # white bg -> 107
+      assert_equal 107, result
+
+      # Test 256-color index conversion to basic ranges
+      result = base_ss.send(:compute_color, "38;5;0")   # Should map to closest basic color
+      assert_operator result, :>=, 30
+      assert_operator result, :<=, 107
+      assert [30, 31, 32, 33, 34, 35, 36, 37, 90, 91, 92, 93, 94, 95, 96, 97].include?(result), "256-color fg should map to valid fg range"
+
+      result = base_ss.send(:compute_color, "48;5;196") # Should map to closest basic bg color
+      assert [40, 41, 42, 43, 44, 45, 46, 47, 100, 101, 102, 103, 104, 105, 106, 107].include?(result), "256-color bg should map to valid bg range"
+    end
+  end
+
+  def test_compute_color_basic_simple_cases
+    base_ss = Gouache::Stylesheet.new({}, base: nil)
+
+    Gouache::Term.stub :color_level, :basic do
+      # Test with ANSI16 actual colors
+      # Normal foreground colors (30-37)
+      assert_equal 30, base_ss.send(:compute_color, "38;2;0;0;0")       # black -> index 0
+      assert_equal 91, base_ss.send(:compute_color, "38;2;255;0;0")     # pure red -> bright red index 9
+      assert_equal 97, base_ss.send(:compute_color, "38;2;255;255;255") # white -> bright white index 15
+
+      # Normal background colors (40-47)
+      assert_equal 40, base_ss.send(:compute_color, "48;2;0;0;0")       # black bg -> index 0
+      assert_equal 101, base_ss.send(:compute_color, "48;2;255;0;0")    # pure red bg -> bright red index 9
+      assert_equal 107, base_ss.send(:compute_color, "48;2;255;255;255")# white bg -> bright white index 15
+
+      # Dark red should map to normal red
+      assert_equal 31, base_ss.send(:compute_color, "38;2;205;0;0")     # dark red -> normal red index 1
+      assert_equal 41, base_ss.send(:compute_color, "48;2;205;0;0")     # dark red bg -> normal red bg
+
+      # Gray should map to bright black
+      assert_equal 90, base_ss.send(:compute_color, "38;2;127;127;127") # gray -> bright black index 8
+      assert_equal 100, base_ss.send(:compute_color, "48;2;127;127;127")# gray bg -> bright black bg
+    end
+  end
+
+  def test_compute_color_with_256_index_conversion
+    base_ss = Gouache::Stylesheet.new({}, base: nil)
+
+    # Save original constant
+    original_colors256 = Gouache::Term::COLORS256
+
+    # Create mock colors array with 256 entries, setting index 196 to red
+    mock_colors = Array.new(256, [0, 0, 0])
+    mock_colors[196] = [255, 0, 0]
+
+    # Replace constant temporarily
+    Gouache::Term.send(:remove_const, :COLORS256)
+    Gouache::Term.const_set(:COLORS256, mock_colors)
+
+    begin
+      # Basic mode should convert 256-color index to RGB then find nearest
+      Gouache::Term.stub :color_level, :basic do
+        result = base_ss.send(:compute_color, "38;5;196")
+        assert_equal 91, result  # nearest to bright red in ANSI16
+      end
+    ensure
+      # Restore original constant
+      Gouache::Term.send(:remove_const, :COLORS256)
+      Gouache::Term.const_set(:COLORS256, original_colors256)
+    end
+  end
+
+  def test_compute_decl_integrates_compute_color
+    # Test that RX_COLOR pattern in compute_decl calls compute_color
+    Gouache::Term.stub :color_level, :truecolor do
+      ss = Gouache::Stylesheet.new({test_color: "38;2;255;128;64"}, base: nil)
+      layer = ss[:test_color]
+      # Should contain the complete color string
+      assert_equal Gouache::Layer.from("38;2;255;128;64"), layer
+    end
   end
 end

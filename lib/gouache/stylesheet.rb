@@ -63,8 +63,7 @@ class Gouache
     end
 
     def key?(key) = @layer_map.key?(key.to_sym)
-
-    def [](*sels) = @layer_map.values_at(*sels.flatten.map(&:to_sym)).compact.inject(Layer.empty, &:overlay)
+    def [](tag)   = @layer_map[tag.to_sym]
 
     # for inspection purposes mainly
     def to_h = @layer_map.transform_values{ it.compact.uniq.then{ it.size == 1 ? it[0] : it } }

@@ -333,34 +333,13 @@ class TestStylesheet < Minitest::Test
     assert_kind_of Gouache::Layer, result
     assert_equal @ss.layer_map[:red], result
 
-    # Multiple selectors overlay
-    result = @ss[:red, :bold]
-    assert_kind_of Gouache::Layer, result
-    refute_equal Gouache::Layer.empty, result
+    # String selector converted to symbol
+    result = @ss["red"]
+    assert_equal @ss[:red], result
 
-    # Non-existent selectors filtered out
-    result = @ss[:red, :nonexistent, :bold]
-    assert_kind_of Gouache::Layer, result
-
-    # All non-existent selectors return empty layer
-    result = @ss[:nonexistent1, :nonexistent2]
-    assert_equal Gouache::Layer.empty, result
-
-    # Array arguments flattened
-    result = @ss[[:red, :bold]]
-    assert_kind_of Gouache::Layer, result
-
-    # Mixed array and individual selectors
-    result = @ss[:red, [:bold, :italic]]
-    assert_kind_of Gouache::Layer, result
-
-    # String selectors converted to symbols
-    result = @ss["red", "bold"]
-    assert_kind_of Gouache::Layer, result
-
-    # Empty arguments return empty layer
-    result = @ss[]
-    assert_equal Gouache::Layer.empty, result
+    # Non-existent selector returns nil
+    result = @ss[:nonexistent]
+    assert_nil result
   end
 
   def test_to_h_method

@@ -532,57 +532,14 @@ class TestLayer < Minitest::Test
     assert_equal 9, range.index
   end
 
-  def test_layer_range_member_method_with_ranges
+  def test_layer_range_member_method_integration
+    # Integration test - LayerRange uses RangeUnion internally
     range = Gouache::Layer::LayerRange.new([30..39, 90..97, 39], label: :fg, index: 0)
 
-    # Test values within ranges
-    assert range.member?(31)  # in 30..39
-    assert range.member?(35)  # in 30..39
-    assert range.member?(91)  # in 90..97
-    assert range.member?(95)  # in 90..97
-
-    # Test values outside ranges
-    refute range.member?(29)  # before 30..39
-    refute range.member?(40)  # after 30..39 but before 90..97
-    refute range.member?(89)  # before 90..97
-    refute range.member?(98)  # after 90..97
-  end
-
-  def test_layer_range_member_method_with_single_values
-    range = Gouache::Layer::LayerRange.new([1, 22], label: :bold, index: 9)
-
-    # Test exact matches
-    assert range.member?(1)
-    assert range.member?(22)
-
-    # Test non-matches
-    refute range.member?(2)
-    refute range.member?(21)
-    refute range.member?(0)
-    refute range.member?(23)
-  end
-
-
-
-  def test_layer_range_member_method_mixed_types
-    # Test with actual mix of ranges and single values
-    range = Gouache::Layer::LayerRange.new([30..39, 5, 25, 90..97, 39], label: :test, index: 99)
-
-    # Test range values
-    assert range.member?(31)  # in 30..39
-    assert range.member?(35)  # in 30..39
-    assert range.member?(91)  # in 90..97
-    assert range.member?(95)  # in 90..97
-
-    # Test single values
-    assert range.member?(5)   # single value
-    assert range.member?(25)  # single value
-
-    # Test non-matches
-    refute range.member?(29)  # before 30..39
-    refute range.member?(40)  # after 30..39 but before 90..97
-    refute range.member?(6)   # not included single
-    refute range.member?(26)  # not included single
+    assert range.member?(31)
+    assert range.member?(91)
+    refute range.member?(29)
+    refute range.member?(40)
   end
 
   def test_layer_range_off_attribute
@@ -599,17 +556,10 @@ class TestLayer < Minitest::Test
   def test_layer_range_case_equality_alias
     range = Gouache::Layer::LayerRange.new([30..39, 90..97, 39], label: :fg, index: 0)
 
-    # Test that === is aliased to member?
-    assert range === 31  # in 30..39
-    assert range === 35  # in 30..39
-    assert range === 91  # in 90..97
-    assert range === 95  # in 90..97
-
-    # Test values outside ranges
-    refute range === 29  # before 30..39
-    refute range === 40  # after 30..39 but before 90..97
-    refute range === 89  # before 90..97
-    refute range === 98  # after 90..97
+    assert range === 31
+    assert range === 91
+    refute range === 29
+    refute range === 40
   end
 
 

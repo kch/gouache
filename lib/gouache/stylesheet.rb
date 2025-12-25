@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 require_relative "base"
 require_relative "layer"
+require_relative "utils"
 
 class Gouache
   class Stylesheet
@@ -17,12 +18,7 @@ class Gouache
 
     def merge(*styles) = self.class.new(styles.inject(&:merge), base: self)
 
-    using Module.new {
-      refine Regexp do
-        def w = /\A#{self}\z/ # wrap it in \A\z. tiny helper so below looks more readable
-      end
-    }
-
+    using RegexpWrap  # enable .w below. wrap it in \A\z
     D256     = /1?\d?\d|2[0-4]\d|25[0-5]/
     D24      = /1?\d|2[0-3]/
     RX_INT   = /(?:#{D256})/.w

@@ -1,19 +1,18 @@
+require_relative "utils"
+
 class Gouache
 
   class Layer < Array
-    class LayerRange
+    class LayerRange < RangeUnion
       attr :label, :index, :off
 
       def initialize(xs, label:, index:)
-        @label  = label
-        @index  = index
-        @off    = xs.last
-        @ranges = xs.map{ Range === it ? it : it..it }
+        @label = label
+        @index = index
+        @off   = xs.last
+        super(*xs)
         freeze
       end
-
-      def member?(x) = @ranges.any?{ it.member? x }
-      alias === member?
     end
 
     RANGES = { # ends as { k: LayerRange, ... }; keys get used for label too

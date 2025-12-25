@@ -1,11 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../lib/gouache"
-
 require "minitest/autorun"
-# require "minitest/reporters"
-# require "minitest/fail_fast"
-# Minitest::Reporters.use!
 
 module Minitest
   module Assertions

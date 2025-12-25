@@ -1,0 +1,24 @@
+#!/usr/bin/env ruby -w
+# frozen_string_literal: true
+
+$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
+$LOAD_PATH.unshift File.expand_path("../test", __dir__)
+
+argv, files = ARGV.partition { it.start_with? ?- }  # Separate file args from minitest args
+ARGV.replace(argv)                                  # Set ARGV to minitest args only
+
+require "minitest/reporters"
+require "minitest/debugger"  if (ARGV & %w[ -d --debug --debugger ]).any?
+require "minitest/fail_fast" if (ARGV & %w[ -f --fail-fast ]).any?
+$VERBOSE = true if (ARGV & %w[ -w --warnings ]).any?
+if (ARGV & %w[ -c --color ]).any?
+  # Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
+  Minitest::Reporters.use! Minitest::Reporters::DefaultReporter.new(color: true)
+end
+
+
+require "minitest/autorun"
+
+files.map!{ "*#{it}*" }
+files = ["*"] if files.empty?
+files.flat_map{ Dir["test/**/*#{it}*.rb"] }.each{ require_relative "../#{it}" }

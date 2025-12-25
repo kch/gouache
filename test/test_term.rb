@@ -183,41 +183,49 @@ class TestTerm < Minitest::Test
 
   def test_nearest16
     # Test nearest16 finds closest color in basic 16-color palette
-    # Red should match index 1 (normal red) in ANSI16
-    index = Gouache::Term.nearest16([255, 0, 0])
-    assert_equal 9, index  # bright red is closer to pure red than normal red
+    Gouache::Term.stub :basic_colors, Gouache::Term::ANSI16 do
+      # Red should match index 1 (normal red) in ANSI16
+      index = Gouache::Term.nearest16([255, 0, 0])
+      assert_equal 9, index  # bright red is closer to pure red than normal red
 
-    # Black should match index 0
-    index = Gouache::Term.nearest16([0, 0, 0])
-    assert_equal 0, index
+      # Black should match index 0
+      index = Gouache::Term.nearest16([0, 0, 0])
+      assert_equal 0, index
 
-    # White should match index 15
-    index = Gouache::Term.nearest16([255, 255, 255])
-    assert_equal 15, index
+      # White should match index 15
+      index = Gouache::Term.nearest16([255, 255, 255])
+      assert_equal 15, index
+    end
   end
 
   def test_nearest256
     # Test nearest256 finds closest color in 256-color palette
-    # Pure red should find exact match
-    index = Gouache::Term.nearest256([255, 0, 0])
-    assert_equal Gouache::Term.colors[index], [255, 0, 0]
+    Gouache::Term.stub :colors, Gouache::Term::COLORS256 do
+      # Pure red should find exact match
+      index = Gouache::Term.nearest256([255, 0, 0])
+      assert_equal Gouache::Term.colors[index], [255, 0, 0]
 
-    # Test caching - should return same result
-    index2 = Gouache::Term.nearest256([255, 0, 0])
-    assert_equal index, index2
+      # Test caching - should return same result
+      index2 = Gouache::Term.nearest256([255, 0, 0])
+      assert_equal index, index2
+    end
   end
 
   def test_colors_method
     # Test that colors returns COLORS256 with basic colors replaced
-    colors = Gouache::Term.colors
-    assert_equal 256, colors.size
+    Gouache::Term.stub :basic_colors, Gouache::Term::ANSI16 do
+      colors = Gouache::Term.colors
+      assert_equal 256, colors.size
 
-    # First 16 should be basic_colors
-    16.times do |i|
-      assert_equal Gouache::Term.basic_colors[i], colors[i]
+      # First 16 should be basic_colors
+      16.times do |i|
+        assert_equal Gouache::Term.basic_colors[i], colors[i]
+      end
+
+      # Rest should be from COLORS256
+      (16...256).each do |i|
+        assert_equal Gouache::Term::COLORS256[i], colors[i]
+      end
     end
-
-    # Rest should be from COLORS256
-    assert_equal Gouache::Term::COLORS256[16], colors[16]
   end
 end

@@ -5,12 +5,14 @@ require_relative "test_helper"
 class TestMain < Minitest::Test
   using Gouache::Wrap
   def setup
+    super
     @original_stdout = $stdout
     @string_io = StringIO.new
   end
 
   def teardown
     $stdout = @original_stdout
+    super
   end
 
   def test_class_bracket_method_basic

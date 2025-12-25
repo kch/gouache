@@ -6,6 +6,7 @@ class TestBuilder < Minitest::Test
   @@called_tags = []
 
   def setup
+    super
     @gouache = Gouache.new
     @@called_tags.clear
 
@@ -19,6 +20,7 @@ class TestBuilder < Minitest::Test
   def teardown
     # Restore original method
     MethodHelpers.restore_method(Gouache::Emitter, :open_tag)
+    super
   end
 
   def test_simple_method_call_returns_string

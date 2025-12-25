@@ -3,22 +3,13 @@
 require_relative "test_helper"
 
 class TestStylesheet < Minitest::Test
-  include TestTermHelpers
 
   def setup
+    super
     @ss = Gouache::Stylesheet::BASE
-    setup_term_isolation
-
-    # Stub color_level to truecolor for consistent test behavior
-    MethodHelpers.replace_method(Gouache::Term.singleton_class, :color_level) { :truecolor }
+    Gouache::Term.color_level = :truecolor
   end
 
-  def teardown
-    # Restore color_level method
-    MethodHelpers.restore_method(Gouache::Term.singleton_class, :color_level)
-
-    teardown_term_isolation
-  end
 
   def test_stylesheet_initialization_empty_and_nil_cases
     # All combinations of empty/nil for styles and base parameters

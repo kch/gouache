@@ -3,6 +3,7 @@ require_relative "test_helper"
 class TestLayerProxy < Minitest::Test
 
   def setup
+    super
     @layer = Gouache::Layer.empty
     @proxy = Gouache::LayerProxy.new(@layer)
   end

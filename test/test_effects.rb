@@ -3,6 +3,7 @@ require_relative "test_helper"
 class TestEffects < Minitest::Test
 
   def setup
+    super
     @stack = Gouache::LayerStack.new
   end
 

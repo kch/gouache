@@ -4,6 +4,7 @@ require_relative "test_helper"
 
 class TestCompile < Minitest::Test
   def setup
+    super
     @go = Gouache.new
   end
 

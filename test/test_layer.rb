@@ -3,11 +3,9 @@
 require_relative "test_helper"
 
 class TestLayer < Minitest::Test
-  include TestTermHelpers
 
   def setup
-    setup_term_isolation
-
+    super
     @layer = Gouache::Layer.empty
     @fg_pos = Gouache::Layer::RANGES.for(31).first
     @bg_pos = Gouache::Layer::RANGES.for(42).first
@@ -17,9 +15,6 @@ class TestLayer < Minitest::Test
     @dim_pos = Gouache::Layer::RANGES.for(2).first
   end
 
-  def teardown
-    teardown_term_isolation
-  end
 
   def test_layer_empty
     layer = Gouache::Layer.empty
@@ -124,9 +119,8 @@ class TestLayer < Minitest::Test
     assert_equal "91", layer.to_sgr(fallback: :basic)
 
     # With fallback: true - should use Term.color_level
-    Gouache::Term.stub :color_level, :basic do
-      assert_equal "91", layer.to_sgr(fallback: true)
-    end
+    Gouache::Term.color_level = :basic
+    assert_equal "91", layer.to_sgr(fallback: true)
   end
 
   def test_layer_from_multiple_codes

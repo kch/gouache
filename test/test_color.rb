@@ -3,15 +3,6 @@
 require "test_helper"
 
 class TestColor < Minitest::Test
-  include TestTermHelpers
-
-  def setup
-    setup_term_isolation
-  end
-
-  def teardown
-    teardown_term_isolation
-  end
 
   def test_rgb_constructor
     # Separate arguments
@@ -184,32 +175,29 @@ class TestColor < Minitest::Test
   end
 
   def test_to_sgr_with_fallback_truecolor
-    Gouache::Term.stub :color_level, :truecolor do
-      color = Gouache::Color.rgb(255, 128, 64)
-      assert_equal "38;2;255;128;64", color.to_sgr(fallback: true)
-    end
+    Gouache::Term.color_level = :truecolor
+    color = Gouache::Color.rgb(255, 128, 64)
+    assert_equal "38;2;255;128;64", color.to_sgr(fallback: true)
   end
 
   def test_to_sgr_with_fallback_256
-    Gouache::Term.stub :color_level, :_256 do
-      color = Gouache::Color.rgb(255, 0, 0)
-      result = color.to_sgr(fallback: true)
-      assert_match(/^38;5;\d+$/, result)
-    end
+    Gouache::Term.color_level = :_256
+    color = Gouache::Color.rgb(255, 0, 0)
+    result = color.to_sgr(fallback: true)
+    assert_match(/^38;5;\d+$/, result)
   end
 
   def test_to_sgr_with_fallback_basic
-    Gouache::Term.stub :color_level, :basic do
-      # Test near-red foreground - should find nearest match to bright red
-      color = Gouache::Color.rgb(254, 0, 0)
-      result = color.to_sgr(fallback: true)
-      assert_equal 91, result  # should map to ANSI bright red
+    Gouache::Term.color_level = :basic
+    # Test near-red foreground - should find nearest match to bright red
+    color = Gouache::Color.rgb(254, 0, 0)
+    result = color.to_sgr(fallback: true)
+    assert_equal 91, result  # should map to ANSI bright red
 
-      # Test background color
-      color = Gouache::Color.on_rgb(254, 0, 0)
-      result = color.to_sgr(fallback: true)
-      assert_equal 101, result  # should map to ANSI bright red background
-    end
+    # Test background color
+    color = Gouache::Color.on_rgb(254, 0, 0)
+    result = color.to_sgr(fallback: true)
+    assert_equal 101, result  # should map to ANSI bright red background
   end
 
   def test_to_sgr_with_fallback_basic_custom_colors
@@ -233,30 +221,29 @@ class TestColor < Minitest::Test
       [255, 255, 255]  # white - index 15
     ]
 
-    Gouache::Term.stub :color_level, :basic do
-      Gouache::Term.stub :basic_colors, custom_colors do
-        # Reset memoized colors to use stubbed basic_colors
-        Gouache::Term.instance_variable_set(:@colors, nil)
+    Gouache::Term.color_level = :basic
+    Gouache::Term.stub :basic_colors, custom_colors do
+      # Reset memoized colors to use stubbed basic_colors
+      Gouache::Term.instance_variable_set(:@colors, nil)
 
-        # Test that dark red [128,0,0] maps to normal red (30+1=31)
-        color = Gouache::Color.rgb(128, 0, 0)
-        result = color.to_sgr(fallback: true)
-        assert_equal 31, result
+      # Test that dark red [128,0,0] maps to normal red (30+1=31)
+      color = Gouache::Color.rgb(128, 0, 0)
+      result = color.to_sgr(fallback: true)
+      assert_equal 31, result
 
-        # Test that bright red [255,0,0] maps to bright red (90+1=91)
-        color = Gouache::Color.rgb(255, 0, 0)
-        result = color.to_sgr(fallback: true)
-        assert_equal 91, result
+      # Test that bright red [255,0,0] maps to bright red (90+1=91)
+      color = Gouache::Color.rgb(255, 0, 0)
+      result = color.to_sgr(fallback: true)
+      assert_equal 91, result
 
-        # Test background colors
-        color = Gouache::Color.on_rgb(128, 0, 0)
-        result = color.to_sgr(fallback: true)
-        assert_equal 41, result  # dark red background
+      # Test background colors
+      color = Gouache::Color.on_rgb(128, 0, 0)
+      result = color.to_sgr(fallback: true)
+      assert_equal 41, result  # dark red background
 
-        color = Gouache::Color.on_rgb(255, 0, 0)
-        result = color.to_sgr(fallback: true)
-        assert_equal 101, result  # bright red background
-      end
+      color = Gouache::Color.on_rgb(255, 0, 0)
+      result = color.to_sgr(fallback: true)
+      assert_equal 101, result  # bright red background
     end
   end
 

@@ -6,6 +6,7 @@ class TestRepaint < Minitest::Test
   using Gouache::Wrap
 
   def setup
+    super
     @go = Gouache.new.enable  # Ensure enabled for default tests
   end
 

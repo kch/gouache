@@ -6,6 +6,7 @@ class TestPrinters < Minitest::Test
   using Gouache::Wrap
 
   def setup
+    super
     @go = Gouache.new
   end
 

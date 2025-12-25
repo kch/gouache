@@ -3,7 +3,10 @@
 require "test_helper"
 
 class TestTerm < Minitest::Test
+  self.term_isolation = false
+
   def setup
+    super
     # Reset memoized instance variables to ensure test isolation
     Gouache::Term.instance_variable_set(:@colors, nil)
     Gouache::Term.instance_variable_set(:@fg_color, nil)
@@ -11,11 +14,11 @@ class TestTerm < Minitest::Test
     Gouache::Term.instance_variable_set(:@basic_colors, nil)
     # Reset class variable for color indices cache
     Gouache::Term.class_variable_set(:@@color_indices, {})
-    Gouache::Term.color_level = nil
+
   end
 
   def teardown
-    Gouache::Term.color_level = nil
+    super
   end
 
   def test_ansi16_colors_count
@@ -175,7 +178,7 @@ class TestTerm < Minitest::Test
     Gouache::Term.color_level = :truecolor
 
     # Cleanup
-    Gouache::Term.instance_variable_set(:@color_level, nil)
+    Gouache::Term.color_level = nil
   end
 
   def test_color_level_fallback_to_env_when_not_forced

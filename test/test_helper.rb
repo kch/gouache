@@ -20,12 +20,22 @@ end
 # Disable OSC calls globally for all tests
 MethodHelpers.replace_method(Gouache::Term.singleton_class, :term_seq) { |*args| raise "OSC calls not allowed in tests" }
 
-module TestTermHelpers
+class Minitest::Test
+  class << self
+    attr_accessor :term_isolation
+    def inherited(sub)
+      super
+      sub.term_isolation = term_isolation
+    end
+  end
+  self.term_isolation = true
 
-  def setup_term_isolation
-    # Override basic_colors to always return ANSI16 without hitting osc
+  def setup
+    super
+    return unless self.class.term_isolation
+    Gouache::Term.color_level = :truecolor
+    # Override colors to always return ANSI16 without hitting osc
     MethodHelpers.replace_method(Gouache::Term.singleton_class, :basic_colors) { Gouache::Term::ANSI16.dup.freeze }
-
     # Reset all memoized colors
     Gouache::Term.instance_variable_set(:@colors, nil)
     Gouache::Term.instance_variable_set(:@fg_color, nil)
@@ -34,17 +44,21 @@ module TestTermHelpers
     Gouache::Term.class_variable_set(:@@color_indices, {})
   end
 
-  def teardown_term_isolation
-    # Restore original methods
-    MethodHelpers.restore_method(Gouache::Term.singleton_class, :basic_colors)
-
-    # Reset all memoized colors
-    Gouache::Term.instance_variable_set(:@colors, nil)
-    Gouache::Term.instance_variable_set(:@fg_color, nil)
-    Gouache::Term.instance_variable_set(:@bg_color, nil)
-    Gouache::Term.instance_variable_set(:@basic_colors, nil)
-    Gouache::Term.class_variable_set(:@@color_indices, {})
+  def teardown
+    if self.class.term_isolation
+      Gouache::Term.color_level = nil
+      # Restore original methods
+      MethodHelpers.restore_method(Gouache::Term.singleton_class, :basic_colors)
+      # Reset all memoized colors
+      Gouache::Term.instance_variable_set(:@colors, nil)
+      Gouache::Term.instance_variable_set(:@fg_color, nil)
+      Gouache::Term.instance_variable_set(:@bg_color, nil)
+      Gouache::Term.instance_variable_set(:@basic_colors, nil)
+      Gouache::Term.class_variable_set(:@@color_indices, {})
+    end
+    super
   end
+
 end
 
 module Minitest

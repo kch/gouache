@@ -45,9 +45,9 @@ class Gouache
       @flushed = Layer.from Layer.from(@queue).diff(@flushed)
       sgr = @flushed.to_sgr
       @queue.clear
-      return self unless sgr.any?
+      return self if sgr.empty?
       @got_sgr = true
-      @out << CSI << sgr*?; << ?m
+      @out << CSI << sgr << ?m
       self
     end
 

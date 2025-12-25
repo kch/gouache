@@ -76,7 +76,7 @@ class Gouache
     end
 
     # return array of codes to emit for layer
-    def to_sgr = self.class.prepare_sgr self
+    def to_sgr = self.class.prepare_sgr(self)*?;
 
   end
 end

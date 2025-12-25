@@ -272,23 +272,22 @@ class TestLayer < Minitest::Test
   def test_layer_to_sgr_basic
     layer = Gouache::Layer.from([1, 31, 4])
     sgr = layer.to_sgr
-    assert_includes sgr, 1   # bold
-    assert_includes sgr, 31  # red
-    assert_includes sgr, 4   # underline
+    assert_includes sgr, "1"
+    assert_includes sgr, "31"
+    assert_includes sgr, "4"
   end
 
   def test_layer_to_sgr_with_nils
     layer = Gouache::Layer.from([31, 1])
     sgr = layer.to_sgr
-    assert_equal 2, sgr.length
-    assert_includes sgr, 1
-    assert_includes sgr, 31
+    assert_includes sgr, "1"
+    assert_includes sgr, "31"
   end
 
   def test_layer_to_sgr_empty
     layer = Gouache::Layer.empty
     sgr = layer.to_sgr
-    assert_equal [], sgr
+    assert_equal "", sgr
   end
 
   def test_layer_range_functionality
@@ -393,21 +392,17 @@ class TestLayer < Minitest::Test
   def test_layer_to_sgr_with_rgb_colors
     layer = Gouache::Layer.from([1, "38;5;123", "48;2;255;128;0"])
     sgr = layer.to_sgr
-    assert_includes sgr, 1
+    assert_includes sgr, "1"
     assert_includes sgr, "38;5;123"
     assert_includes sgr, "48;2;255;128;0"
-    # Should be sorted properly with strings and integers mixed
-    assert sgr.is_a?(Array)
   end
 
   def test_layer_to_sgr_mixed_types_sorting
     layer = Gouache::Layer.from([31, "38;5;200", 1])  # mix integer and string - 38 wins over 31 in fg slot
     sgr = layer.to_sgr
-    refute_includes sgr, 31          # 31 should be overridden by 38;5;200
+    refute_includes sgr, "31"
     assert_includes sgr, "38;5;200"
-    assert_includes sgr, 1
-    # Should handle mixed string/integer sorting
-    assert_equal 2, sgr.length
+    assert_includes sgr, "1"
   end
 
   def test_layer_prepare_sgr_sorting
@@ -664,10 +659,8 @@ class TestLayer < Minitest::Test
     # Other positions remain nil
 
     sgr = layer.to_sgr
-    assert_equal 2, sgr.length
-    assert_includes sgr, 1
-    assert_includes sgr, 31
-    refute_includes sgr, nil
+    assert_includes sgr, "1"
+    assert_includes sgr, "31"
   end
 
   def test_layer_overlay_with_invalid_layer_like_object

@@ -18,12 +18,14 @@ class Gouache
   RX_ESC_LA  = /(?=\e)/
   RX_SGR     = /#{Regexp.escape(CSI)}[;\d]*m/
   RX_UNPAINT = Regexp.union RX_SGR, WRAP_OPEN, WRAP_CLOSE
+  D8         = / 1?\d?\d | 2[0-4]\d | 25[0-5] /x  # 0..255 string
+  RX_SGR_SEQ = /(?<=^|;|\[)(?: ( [34]8 ;  (?: 5 ; #{D8} | 2 (?: ; #{D8} ){3} ))  |  (#{D8}) )(?=;|m|$)/x
 
   attr :rules
 
   class << self
     using Wrap
-    def scan_sgr(s) = s.scan(/([34]8;(?:5;\d+|2(?:;\d+){3}))|(\d+)/).map{|s,d| s ? s : d.to_i }
+    def scan_sgr(s) = s.scan(RX_SGR_SEQ).map{|s,d| s ? s : d.to_i }
     def unpaint(s)  = s.gsub(RX_UNPAINT, "")
     def wrap(s)     = s.wrap
     alias embed wrap

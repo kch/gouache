@@ -217,11 +217,113 @@ class TestMain < Minitest::Test
   end
 
   def test_class_scan_sgr_method
-    # Gouache.scan_sgr should extract SGR codes
-    sgr_string = "\e[31;1m"
-    result = Gouache.scan_sgr(sgr_string)
-    assert_includes result, 31
-    assert_includes result, 1
+    # Basic SGR codes
+    result = Gouache.scan_sgr("31;1")
+    assert_equal [31, 1], result
+
+    # Extended 256-color sequences
+    result = Gouache.scan_sgr("38;5;196")
+    assert_equal ["38;5;196"], result
+
+    result = Gouache.scan_sgr("48;5;46")
+    assert_equal ["48;5;46"], result
+
+    # 24-bit RGB sequences
+    result = Gouache.scan_sgr("38;2;255;128;64")
+    assert_equal ["38;2;255;128;64"], result
+
+    result = Gouache.scan_sgr("48;2;0;255;0")
+    assert_equal ["48;2;0;255;0"], result
+
+    # Mixed basic and extended
+    result = Gouache.scan_sgr("1;38;5;196;42")
+    assert_equal [1, "38;5;196", 42], result
+
+    # Complex sequences with multiple extended colors
+    result = Gouache.scan_sgr("38;2;255;0;0;48;5;46;1")
+    assert_equal ["38;2;255;0;0", "48;5;46", 1], result
+
+    # Edge cases - boundary values
+    result = Gouache.scan_sgr("38;5;0")
+    assert_equal ["38;5;0"], result
+
+    result = Gouache.scan_sgr("38;5;255")
+    assert_equal ["38;5;255"], result
+
+    result = Gouache.scan_sgr("38;2;0;0;0")
+    assert_equal ["38;2;0;0;0"], result
+
+    result = Gouache.scan_sgr("38;2;255;255;255")
+    assert_equal ["38;2;255;255;255"], result
+
+    # Invalid values should be ignored or handled gracefully
+    result = Gouache.scan_sgr("38;5;256")  # out of range
+    assert_kind_of Array, result
+
+    result = Gouache.scan_sgr("38;2;256;0;0")  # RGB out of range
+    assert_kind_of Array, result
+
+    # Malformed sequences
+    result = Gouache.scan_sgr("38;5")  # incomplete
+    assert_kind_of Array, result
+
+    result = Gouache.scan_sgr("38;2;255;0")  # incomplete RGB
+    assert_kind_of Array, result
+
+    # Empty and edge cases
+    result = Gouache.scan_sgr("")
+    assert_equal [], result
+
+    result = Gouache.scan_sgr("0")
+    assert_equal [0], result
+
+    result = Gouache.scan_sgr("107")
+    assert_equal [107], result
+
+    # Leading zeros not supported in SGR spec
+    result = Gouache.scan_sgr("38;5;005")
+    assert_equal [38, 5], result
+
+    # Multiple digit handling
+    result = Gouache.scan_sgr("38;5;123;48;2;200;100;50")
+    assert_equal ["38;5;123", "48;2;200;100;50"], result
+
+    # Multiple semicolons should be handled gracefully
+    result = Gouache.scan_sgr("31;;1")
+    assert_equal [31, 1], result
+
+    result = Gouache.scan_sgr("38;5;;196")
+    assert_equal [38, 5, 196], result
+
+    result = Gouache.scan_sgr(";;;31;1;;;")
+    assert_equal [31, 1], result
+
+    result = Gouache.scan_sgr("38;2;;;255;0;0")
+    assert_equal [38, 2, 255, 0, 0], result
+
+    # Full SGR escape sequences
+    result = Gouache.scan_sgr("\e[31;1m")
+    assert_equal [31, 1], result
+
+    result = Gouache.scan_sgr("\e[38;5;196m")
+    assert_equal ["38;5;196"], result
+
+    result = Gouache.scan_sgr("\e[48;2;255;128;64m")
+    assert_equal ["48;2;255;128;64"], result
+
+    result = Gouache.scan_sgr("\e[0;38;2;255;0;0;48;5;46;1m")
+    assert_equal [0, "38;2;255;0;0", "48;5;46", 1], result
+
+    # Multiple SGR sequences
+    result = Gouache.scan_sgr("\e[31m\e[1m\e[42m")
+    assert_equal [31, 1, 42], result
+
+    result = Gouache.scan_sgr("\e[38;5;196m\e[48;2;0;255;0m")
+    assert_equal ["38;5;196", "48;2;0;255;0"], result
+
+    # SGR with extra characters should extract only the sequences
+    result = Gouache.scan_sgr("hello\e[31mworld\e[0m!")
+    assert_equal [31, 0], result
   end
 
   def test_delegated_methods_return_main_instance

@@ -14,23 +14,63 @@ class TestColor < Minitest::Test
   end
 
   def test_rgb_constructor
+    # Separate arguments
     color = Gouache::Color.rgb(255, 0, 0)
+    assert_equal [255, 0, 0], color.rgb
+
+    # Array argument
+    color = Gouache::Color.rgb([255, 0, 0])
+    assert_equal [255, 0, 0], color.rgb
+
+    # Hex string with #
+    color = Gouache::Color.rgb("#ff0000")
+    assert_equal [255, 0, 0], color.rgb
+
+    # Hex string without #
+    color = Gouache::Color.rgb("ff0000")
     assert_equal [255, 0, 0], color.rgb
   end
 
   def test_on_rgb_constructor
+    # Separate arguments
     color = Gouache::Color.on_rgb(0, 255, 0)
+    assert_equal [0, 255, 0], color.rgb
+    assert_equal "48;2;0;255;0", color.sgr
+
+    # Array argument
+    color = Gouache::Color.on_rgb([0, 255, 0])
+    assert_equal [0, 255, 0], color.rgb
+    assert_equal "48;2;0;255;0", color.sgr
+
+    # Hex string with #
+    color = Gouache::Color.on_rgb("#00ff00")
+    assert_equal [0, 255, 0], color.rgb
+    assert_equal "48;2;0;255;0", color.sgr
+
+    # Hex string without #
+    color = Gouache::Color.on_rgb("00ff00")
     assert_equal [0, 255, 0], color.rgb
     assert_equal "48;2;0;255;0", color.sgr
   end
 
   def test_hex_constructor
+    # Without # prefix
     color = Gouache::Color.hex("ff0000")
+    assert_equal [255, 0, 0], color.rgb
+
+    # With # prefix
+    color = Gouache::Color.hex("#ff0000")
     assert_equal [255, 0, 0], color.rgb
   end
 
   def test_on_hex_constructor
+    # Without # prefix
     color = Gouache::Color.on_hex("00ff00")
+    assert_equal [0, 255, 0], color.rgb
+    assert_equal "48;2;0;255;0", color.sgr
+
+    # With # prefix
+    color = Gouache::Color.on_hex("#00ff00")
     assert_equal [0, 255, 0], color.rgb
     assert_equal "48;2;0;255;0", color.sgr
   end
@@ -44,6 +84,23 @@ class TestColor < Minitest::Test
     color = Gouache::Color.sgr("38;2;255;128;64")
     assert_equal [255, 128, 64], color.rgb
     assert_equal "38;2;255;128;64", color.sgr
+  end
+
+  def test_ansi_constructor_alias
+    # ansi is an alias for sgr
+    color1 = Gouache::Color.ansi("38;2;255;128;64")
+    color2 = Gouache::Color.sgr("38;2;255;128;64")
+
+    assert_equal color1.rgb, color2.rgb
+    assert_equal color1.sgr, color2.sgr
+    assert_equal color1.role, color2.role
+
+    # Test with basic SGR codes
+    color3 = Gouache::Color.ansi(31)
+    color4 = Gouache::Color.sgr(31)
+
+    assert_equal color3.basic, color4.basic
+    assert_equal color3.role, color4.role
   end
 
   def test_cube_constructor

@@ -14,7 +14,7 @@ class Gouache
     RX_BASIC = / (?: 3|4|9|10 ) [0-7] | [34]9              /x.w # sgr basic ranges
     RX_256   = / ([34]8) ; 5 ; (#{D8})                     /x.w # sgr 256 color
     RX_RGB   = / ([34]8) ; 2 ; (#{D8}) ; (#{D8}) ; (#{D8}) /x.w # sgr truecolor
-    RX_HEX   = / (\h\h) (\h\h) (\h\h)                      /x.w # hex syntax for truecolor
+    RX_HEX   = / \#? (\h\h) (\h\h) (\h\h)                  /x.w # hex syntax for truecolor
 
     def initialize(**kva)
       # very unforgiving as public use
@@ -34,10 +34,20 @@ class Gouache
       raise ArgumentError, kva.inspect unless @role in 38 | 48 | nil
     end
 
+    private_class_method def self.parse_rgb(args)
+      case args
+      in [ I8 => r, I8 => g, I8 => b ] then [r,g,b]
+      in [[I8 => r, I8 => g, I8 => b]] then [r,g,b]
+      in [RX_HEX]                      then $~[1..].map{it.to_i(16)}
+      else raise ArgumentError, args.inspect
+      end
+    end
+
     # constructors for styles
     def self.sgr(sgr)        = new(sgr:)
-    def self.rgb(r,g,b)      = new(role: FG, rgb: [r,g,b])
-    def self.on_rgb(r,g,b)   = new(role: BG, rgb: [r,g,b])
+    def self.ansi(sgr)       = new(sgr:)
+    def self.rgb(*rgb)       = new(role: FG, rgb: parse_rgb(rgb))
+    def self.on_rgb(*rgb)    = new(role: BG, rgb: parse_rgb(rgb))
     def self.hex(hs)         = new(role: FG, rgb: hs)
     def self.on_hex(hs)      = new(role: BG, rgb: hs)
     def self.cube(r,g,b)     = new(role: FG, cube: [r,g,b])

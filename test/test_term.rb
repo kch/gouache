@@ -11,6 +11,11 @@ class TestTerm < Minitest::Test
     Gouache::Term.instance_variable_set(:@basic_colors, nil)
     # Reset class variable for color indices cache
     Gouache::Term.class_variable_set(:@@color_indices, {})
+    Gouache::Term.color_level = nil
+  end
+
+  def teardown
+    Gouache::Term.color_level = nil
   end
 
   def test_ansi16_colors_count
@@ -132,7 +137,93 @@ class TestTerm < Minitest::Test
     end
   end
 
+  def test_color_level_forced_setting
+    original_colorterm = ENV["COLORTERM"]
+    original_term = ENV["TERM"]
 
+    begin
+      # Test that forced setting overrides environment
+      ENV["COLORTERM"] = "truecolor"
+      ENV["TERM"] = "xterm-256color"
+
+      Gouache::Term.color_level = :basic
+      assert_equal :basic, Gouache::Term.color_level
+
+      Gouache::Term.color_level = :_256
+      assert_equal :_256, Gouache::Term.color_level
+
+      Gouache::Term.color_level = :truecolor
+      assert_equal :truecolor, Gouache::Term.color_level
+    ensure
+      ENV["COLORTERM"] = original_colorterm
+      ENV["TERM"] = original_term
+      # Reset forced setting
+      Gouache::Term.instance_variable_set(:@color_level, nil)
+    end
+  end
+
+  def test_color_level_setter_validation
+    assert_raises(ArgumentError) { Gouache::Term.color_level = :invalid }
+    assert_raises(ArgumentError) { Gouache::Term.color_level = "basic" }
+    assert_raises(ArgumentError) { Gouache::Term.color_level = 256 }
+    # nil should be valid now (resets forced setting)
+    Gouache::Term.color_level = nil
+
+    # Valid values should not raise
+    Gouache::Term.color_level = :basic
+    Gouache::Term.color_level = :_256
+    Gouache::Term.color_level = :truecolor
+
+    # Cleanup
+    Gouache::Term.instance_variable_set(:@color_level, nil)
+  end
+
+  def test_color_level_fallback_to_env_when_not_forced
+    original_colorterm = ENV["COLORTERM"]
+    original_term = ENV["TERM"]
+
+    begin
+      # Reset any forced setting
+      Gouache::Term.instance_variable_set(:@color_level, nil)
+
+      ENV["COLORTERM"] = "truecolor"
+      assert_equal :truecolor, Gouache::Term.color_level
+
+      # Force a setting, then reset it
+      Gouache::Term.color_level = :basic
+      assert_equal :basic, Gouache::Term.color_level
+
+      # Reset and should fall back to env
+      Gouache::Term.instance_variable_set(:@color_level, nil)
+      assert_equal :truecolor, Gouache::Term.color_level
+    ensure
+      ENV["COLORTERM"] = original_colorterm
+      ENV["TERM"] = original_term
+      Gouache::Term.instance_variable_set(:@color_level, nil)
+    end
+  end
+
+  def test_color_level_reset_with_nil
+    original_colorterm = ENV["COLORTERM"]
+    original_term = ENV["TERM"]
+
+    begin
+      ENV["COLORTERM"] = "truecolor"
+      ENV["TERM"] = "xterm-256color"
+
+      # Force a setting
+      Gouache::Term.color_level = :basic
+      assert_equal :basic, Gouache::Term.color_level
+
+      # Reset with nil - should fall back to environment
+      Gouache::Term.color_level = nil
+      assert_equal :truecolor, Gouache::Term.color_level
+    ensure
+      ENV["COLORTERM"] = original_colorterm
+      ENV["TERM"] = original_term
+      Gouache::Term.instance_variable_set(:@color_level, nil)
+    end
+  end
 
   def test_osc_with_mock
     Gouache::Term.stub :term_seq, "\e]4;1;rgb:ff/00/00\a" do

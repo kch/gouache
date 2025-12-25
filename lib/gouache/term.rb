@@ -80,7 +80,13 @@ class Gouache
       @basic_colors = (h ? RG_BASIC.map{ h[it] or raise } : ANSI16.dup).freeze
     end
 
+    def color_level=(level)
+      raise ArgumentError unless level in :basic | :_256 | :truecolor | nil
+      @color_level = level
+    end
+
     def color_level
+      return @color_level if @color_level
       return :truecolor if /truecolor/i =~ ENV["COLORTERM"]
       case ENV["TERM"]
       when /-256color$/                 then :_256

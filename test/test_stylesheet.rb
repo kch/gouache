@@ -3,46 +3,21 @@
 require_relative "test_helper"
 
 class TestStylesheet < Minitest::Test
+  include TestTermHelpers
+
   def setup
     @ss = Gouache::Stylesheet::BASE
-
-    # Override basic_colors to always return ANSI16 without hitting osc
-    Gouache::Term.singleton_class.alias_method :basic_colors_original, :basic_colors
-    Gouache::Term.singleton_class.undef_method :basic_colors
-    Gouache::Term.singleton_class.define_method(:basic_colors) { Gouache::Term::ANSI16.dup.freeze }
-
-    # Override term_seq to raise and prevent OSC calls
-    Gouache::Term.singleton_class.alias_method :term_seq_original, :term_seq
-    Gouache::Term.singleton_class.undef_method :term_seq
-    Gouache::Term.singleton_class.define_method(:term_seq) { |*args| raise "OSC calls not allowed in tests" }
+    setup_term_isolation
 
     # Stub color_level to truecolor for consistent test behavior
-    Gouache::Term.singleton_class.alias_method :color_level_original, :color_level
-    Gouache::Term.singleton_class.undef_method :color_level
-    Gouache::Term.singleton_class.define_method(:color_level) { :truecolor }
-
-    # Reset memoized instance variables to ensure test isolation
-    Gouache::Term.instance_variable_set(:@colors, nil)
-    Gouache::Term.instance_variable_set(:@fg_color, nil)
-    Gouache::Term.instance_variable_set(:@bg_color, nil)
-    Gouache::Term.instance_variable_set(:@basic_colors, nil)
-    # Reset class variable for color indices cache
-    Gouache::Term.class_variable_set(:@@color_indices, {})
+    MethodHelpers.replace_method(Gouache::Term.singleton_class, :color_level) { :truecolor }
   end
 
   def teardown
-    # Restore original methods
-    Gouache::Term.singleton_class.undef_method :color_level
-    Gouache::Term.singleton_class.alias_method :color_level, :color_level_original
-    Gouache::Term.singleton_class.undef_method :color_level_original
+    # Restore color_level method
+    MethodHelpers.restore_method(Gouache::Term.singleton_class, :color_level)
 
-    Gouache::Term.singleton_class.undef_method :basic_colors
-    Gouache::Term.singleton_class.alias_method :basic_colors, :basic_colors_original
-    Gouache::Term.singleton_class.undef_method :basic_colors_original
-
-    Gouache::Term.singleton_class.undef_method :term_seq
-    Gouache::Term.singleton_class.alias_method :term_seq, :term_seq_original
-    Gouache::Term.singleton_class.undef_method :term_seq_original
+    teardown_term_isolation
   end
 
   def test_stylesheet_initialization_empty_and_nil_cases

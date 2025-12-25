@@ -3,42 +3,14 @@
 require "test_helper"
 
 class TestColor < Minitest::Test
+  include TestTermHelpers
+
   def setup
-    # Override basic_colors to always return ANSI16 without hitting osc
-    Gouache::Term.singleton_class.alias_method :basic_colors_original, :basic_colors
-    Gouache::Term.singleton_class.undef_method :basic_colors
-    Gouache::Term.singleton_class.define_method(:basic_colors) { Gouache::Term::ANSI16.dup.freeze }
-
-    # Override term_seq to raise and prevent OSC calls
-    Gouache::Term.singleton_class.alias_method :term_seq_original, :term_seq
-    Gouache::Term.singleton_class.undef_method :term_seq
-    Gouache::Term.singleton_class.define_method(:term_seq) { |*args| raise "OSC calls not allowed in tests" }
-
-    # Reset memoized colors
-    Gouache::Term.instance_variable_set(:@colors, nil)
-    Gouache::Term.instance_variable_set(:@fg_color, nil)
-    Gouache::Term.instance_variable_set(:@bg_color, nil)
-    Gouache::Term.instance_variable_set(:@basic_colors, nil)
-    # Reset class variable for color indices cache
-    Gouache::Term.class_variable_set(:@@color_indices, {})
+    setup_term_isolation
   end
 
   def teardown
-    # Restore original methods
-    Gouache::Term.singleton_class.undef_method :basic_colors
-    Gouache::Term.singleton_class.alias_method :basic_colors, :basic_colors_original
-    Gouache::Term.singleton_class.undef_method :basic_colors_original
-
-    Gouache::Term.singleton_class.undef_method :term_seq
-    Gouache::Term.singleton_class.alias_method :term_seq, :term_seq_original
-    Gouache::Term.singleton_class.undef_method :term_seq_original
-
-    # Reset memoized colors
-    Gouache::Term.instance_variable_set(:@colors, nil)
-    Gouache::Term.instance_variable_set(:@fg_color, nil)
-    Gouache::Term.instance_variable_set(:@bg_color, nil)
-    Gouache::Term.instance_variable_set(:@basic_colors, nil)
-    Gouache::Term.class_variable_set(:@@color_indices, {})
+    teardown_term_isolation
   end
 
   def test_rgb_constructor

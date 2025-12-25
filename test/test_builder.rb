@@ -10,9 +10,7 @@ class TestBuilder < Minitest::Test
     @@called_tags.clear
 
     # Set up tag tracking
-    Gouache::Emitter.alias_method :open_tag_original, :open_tag
-    Gouache::Emitter.remove_method :open_tag
-    Gouache::Emitter.define_method(:open_tag) do |tag|
+    MethodHelpers.replace_method(Gouache::Emitter, :open_tag) do |tag|
       @@called_tags << tag
       open_tag_original(tag)
     end
@@ -20,9 +18,7 @@ class TestBuilder < Minitest::Test
 
   def teardown
     # Restore original method
-    Gouache::Emitter.remove_method :open_tag
-    Gouache::Emitter.alias_method :open_tag, :open_tag_original
-    Gouache::Emitter.remove_method :open_tag_original
+    MethodHelpers.restore_method(Gouache::Emitter, :open_tag)
   end
 
   def test_simple_method_call_returns_string

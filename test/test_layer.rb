@@ -589,6 +589,32 @@ class TestLayer < Minitest::Test
     assert_equal 24, range3.off
   end
 
+  def test_layer_range_on_attribute
+    # Test on attribute with integer first element
+    range1 = Gouache::Layer::LayerRange.new([1, 22], label: :bold, index: 9)
+    assert_equal 1, range1.on
+    assert_equal 22, range1.off
+
+    range2 = Gouache::Layer::LayerRange.new([4, 21, 24], label: :underline, index: 8)
+    assert_equal 4, range2.on
+    assert_equal 24, range2.off
+
+    # Test with range first element - on should be nil
+    range3 = Gouache::Layer::LayerRange.new([30..39, 90..97, 39], label: :fg, index: 0)
+    assert_nil range3.on
+    assert_equal 39, range3.off
+
+    # Test explicitly that on is nil when first element is not integer
+    range5 = Gouache::Layer::LayerRange.new([20..29, 3, 23], label: :test, index: 5)
+    assert_nil range5.on  # first element is range, not integer
+    assert_equal 23, range5.off
+
+    # Test with mixed elements where first is integer
+    range4 = Gouache::Layer::LayerRange.new([3, 20..29, 23], label: :italic, index: 2)
+    assert_equal 3, range4.on
+    assert_equal 23, range4.off
+  end
+
   def test_layer_range_case_equality_alias
     range = Gouache::Layer::LayerRange.new([30..39, 90..97, 39], label: :fg, index: 0)
 

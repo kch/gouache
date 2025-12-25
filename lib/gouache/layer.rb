@@ -5,12 +5,13 @@ class Gouache
 
   class Layer < Array
     class LayerRange < RangeUnion
-      attr :label, :index, :off
+      attr :label, :index, :off, :on
 
       def initialize(xs, label:, index:)
         @label = label
         @index = index
         @off   = xs.last
+        @on    = xs.first if xs.first.is_a? Integer
         super(*xs)
         freeze
       end

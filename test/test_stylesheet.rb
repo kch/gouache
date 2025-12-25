@@ -473,16 +473,16 @@ class TestStylesheet < Minitest::Test
     end
 
     # Test specific SGR values for key patterns
-    assert_equal Gouache::Layer.from("38;2;252;0;0"), ss.layer_map[:red]  # #fc0000
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;2;252;0;0"), ss.layer_map[:red]  # #fc0000
     assert_equal Gouache::Layer.from(1), ss.layer_map[:a]                 # bold
     assert_equal ss.layer_map[:a], ss.layer_map[:b]                           # b->a chain
     assert_equal Gouache::Layer.empty, ss.layer_map[:d]                   # nil
     assert_equal Gouache::Layer.from(31, 4), ss.layer_map[:g]             # "31;4"
-    assert_equal Gouache::Layer.from("38;2;1;2;233"), ss.layer_map[:k]    # rgb(1,2,233)
-    assert_equal Gouache::Layer.from("38;5;255"), ss.layer_map[:l]        # gray(23) = 232+23
-    assert_equal Gouache::Layer.from("38;5;123"), ss.layer_map[:n]        # 256(123)
-    assert_equal Gouache::Layer.from("48;2;1;2;3"), ss.layer_map[:o]      # on_rgb(1,2,3)
-    assert_equal Gouache::Layer.from("38;5;67"), ss.layer_map[:s]         # #123 = 1*36+2*6+3+16
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;2;1;2;233"), ss.layer_map[:k]    # rgb(1,2,233)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;255"), ss.layer_map[:l]        # gray(23) = 232+23
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;123"), ss.layer_map[:n]        # 256(123)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;1;2;3"), ss.layer_map[:o]      # on_rgb(1,2,3)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;67"), ss.layer_map[:s]         # #123 = 1*36+2*6+3+16
   end
 
   def test_valid_sgr_with_empty_segments
@@ -590,30 +590,30 @@ class TestStylesheet < Minitest::Test
     end
 
     # Test specific SGR values
-    assert_equal Gouache::Layer.from("38;2;0;0;0"), ss.layer_map[:rgb1]          # rgb(0,0,0)
-    assert_equal Gouache::Layer.from("38;2;255;255;255"), ss.layer_map[:rgb2]    # rgb(255,255,255)
-    assert_equal Gouache::Layer.from("48;2;128;64;32"), ss.layer_map[:rgb_bg1]   # on_rgb(128,64,32)
-    assert_equal Gouache::Layer.from("48;2;255;0;128"), ss.layer_map[:rgb_bg2]   # on_rgb(255,0,128)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;2;0;0;0"), ss.layer_map[:rgb1]          # rgb(0,0,0)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;2;255;255;255"), ss.layer_map[:rgb2]    # rgb(255,255,255)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;128;64;32"), ss.layer_map[:rgb_bg1]   # on_rgb(128,64,32)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;255;0;128"), ss.layer_map[:rgb_bg2]   # on_rgb(255,0,128)
 
-    assert_equal Gouache::Layer.from("38;5;0"), ss.layer_map[:color256_1]        # 256(0)
-    assert_equal Gouache::Layer.from("38;5;255"), ss.layer_map[:color256_2]      # 256(255)
-    assert_equal Gouache::Layer.from("48;5;0"), ss.layer_map[:color256_bg1]      # on_256(0)
-    assert_equal Gouache::Layer.from("48;5;255"), ss.layer_map[:color256_bg2]    # on_256(255)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;0"), ss.layer_map[:color256_1]        # 256(0)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;255"), ss.layer_map[:color256_2]      # 256(255)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;0"), ss.layer_map[:color256_bg1]      # on_256(0)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;255"), ss.layer_map[:color256_bg2]    # on_256(255)
 
-    assert_equal Gouache::Layer.from("38;5;232"), ss.layer_map[:gray1]           # gray(0) = 232+0
-    assert_equal Gouache::Layer.from("38;5;255"), ss.layer_map[:gray2]           # gray(23) = 232+23
-    assert_equal Gouache::Layer.from("48;5;232"), ss.layer_map[:gray_bg1]        # on_gray(0) = 232+0
-    assert_equal Gouache::Layer.from("48;5;255"), ss.layer_map[:gray_bg2]        # on_gray(23) = 232+23
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;232"), ss.layer_map[:gray1]           # gray(0) = 232+0
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;255"), ss.layer_map[:gray2]           # gray(23) = 232+23
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;232"), ss.layer_map[:gray_bg1]        # on_gray(0) = 232+0
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;255"), ss.layer_map[:gray_bg2]        # on_gray(23) = 232+23
 
-    assert_equal Gouache::Layer.from("38;5;16"), ss.layer_map[:hex3_1]           # #000 = 0*36+0*6+0+16
-    assert_equal Gouache::Layer.from("38;5;231"), ss.layer_map[:hex3_2]          # #555 = 5*36+5*6+5+16
-    assert_equal Gouache::Layer.from("38;2;0;0;0"), ss.layer_map[:hex6_1]        # #000000
-    assert_equal Gouache::Layer.from("38;2;255;255;255"), ss.layer_map[:hex6_2]  # #ffffff
-    assert_equal Gouache::Layer.from("38;2;171;205;239"), ss.layer_map[:hex6_3]  # #abcdef
-    assert_equal Gouache::Layer.from("48;5;67"), ss.layer_map[:hex_bg3_1]        # on#123 = 1*36+2*6+3+16
-    assert_equal Gouache::Layer.from("48;5;189"), ss.layer_map[:hex_bg3_2]       # on#445 = 4*36+4*6+5+16
-    assert_equal Gouache::Layer.from("48;2;0;0;0"), ss.layer_map[:hex_bg6_1]     # on#000000
-    assert_equal Gouache::Layer.from("48;2;255;255;255"), ss.layer_map[:hex_bg6_2] # on#ffffff
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;16"), ss.layer_map[:hex3_1]           # #000 = 0*36+0*6+0+16
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;231"), ss.layer_map[:hex3_2]          # #555 = 5*36+5*6+5+16
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;2;0;0;0"), ss.layer_map[:hex6_1]        # #000000
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;2;255;255;255"), ss.layer_map[:hex6_2]  # #ffffff
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;2;171;205;239"), ss.layer_map[:hex6_3]  # #abcdef
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;67"), ss.layer_map[:hex_bg3_1]        # on#123 = 1*36+2*6+3+16
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;189"), ss.layer_map[:hex_bg3_2]       # on#445 = 4*36+4*6+5+16
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;0;0;0"), ss.layer_map[:hex_bg6_1]     # on#000000
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;255;255;255"), ss.layer_map[:hex_bg6_2] # on#ffffff
   end
 
   def test_boundary_conditions_comprehensive
@@ -890,7 +890,7 @@ class TestStylesheet < Minitest::Test
       ss = Gouache::Stylesheet.new({test_color: "38;2;255;128;64"}, base: nil)
       layer = ss[:test_color]
       # Should contain the complete color string
-      assert_equal Gouache::Layer.from("38;2;255;128;64"), layer
+      assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;2;255;128;64"), layer
     end
   end
 end

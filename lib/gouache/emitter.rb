@@ -43,7 +43,7 @@ class Gouache
     private def flush
       return self unless @queue.any?
       @flushed = Layer.from Layer.from(@queue).diff(@flushed)
-      sgr = @flushed.to_sgr
+      sgr = @flushed.to_sgr(fallback: true)
       @queue.clear
       return self if sgr.empty?
       @got_sgr = true

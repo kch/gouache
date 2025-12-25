@@ -37,10 +37,17 @@ class Gouache
 
     BASE = new(RANGES.values.map(&:off)).freeze
 
-    # special handling for dim/bold
-    # dim/bold turn on independently but are both turned off by 22
-    # off code goes first so any on code actually applies
-    def self.prepare_sgr(xs) = xs.compact.uniq.then{ [*it.delete(22), *it] }
+    # transforms xs into a valid array of sgr codes
+    # special handling for dim/bold:
+    # - dim/bold turn on independently but are both turned off by 22
+    # - so we move 22 in front, off code goes first so any on code that follows actually applies
+    # also convert Color to sgr
+    def self.prepare_sgr(xs, fallback: false)
+      xs = xs.compact.uniq
+      sgr22 = xs.delete(22)
+      xs.map!{ it.respond_to?(:to_sgr) ? it.to_sgr(fallback:) : it }
+      [*sgr22, *xs]
+    end
 
     def self.empty = new(RANGES.size, nil)
 
@@ -75,7 +82,7 @@ class Gouache
     end
 
     # return array of codes to emit for layer
-    def to_sgr = self.class.prepare_sgr(self)*?;
+    def to_sgr(fallback: false) = self.class.prepare_sgr(self, fallback:)*?;
 
   end
 end

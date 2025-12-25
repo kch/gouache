@@ -755,142 +755,548 @@ class TestStylesheet < Minitest::Test
     refute_same base_ss, merged_ss  # Should be different object
   end
 
-  def test_rx_color_pattern_matching
-    # RX_COLOR should match 256-color format
-    assert_match Gouache::Stylesheet::RX_COLOR, "38;5;196"
-    assert_match Gouache::Stylesheet::RX_COLOR, "48;5;21"
 
-    # RX_COLOR should match RGB format
-    assert_match Gouache::Stylesheet::RX_COLOR, "38;2;255;128;64"
-    assert_match Gouache::Stylesheet::RX_COLOR, "48;2;0;255;0"
+  def test_array_rule_color_merging
+    # Test that array of colors in rule gets merged properly
+    colors = [
+      Gouache::Color.rgb(255, 128, 64),
+      Gouache::Color.cube(5, 0, 0),
+      Gouache::Color.sgr(31)
+    ]
 
-    # Should not match invalid formats
-    refute_match Gouache::Stylesheet::RX_COLOR, "39;5;21"     # wrong prefix
-    refute_match Gouache::Stylesheet::RX_COLOR, "38;3;255"    # wrong format
-    refute_match Gouache::Stylesheet::RX_COLOR, "38;256"      # incomplete
+    ss = Gouache::Stylesheet.new({test_array: colors}, base: nil)
+    layer = ss[:test_array]
+
+    # Should contain merged color with all representations
+    assert_kind_of Gouache::Layer, layer
+    color = layer[0]  # fg color at index 0
+    assert_kind_of Gouache::Color, color
+    assert_equal [255, 128, 64], color.rgb
+    assert_equal 196, color._256  # from cube(5,0,0)
+    assert_equal "38;2;255;128;64", color.sgr  # prefers highest fidelity
+    assert_equal 31, color.to_sgr(fallback: :basic)  # uses fallback
   end
 
-  def test_compute_color_terminal_adaptation
-    # Test color level adaptation behavior
-    base_ss = Gouache::Stylesheet.new({}, base: nil)
+  def test_array_rule_mixed_roles
+    # Test array with both foreground and background colors
+    colors = [
+      Gouache::Color.rgb(255, 0, 0),      # fg
+      Gouache::Color.on_rgb(0, 255, 0),   # bg
+      Gouache::Color.sgr(31),             # fg
+      Gouache::Color.sgr(42)              # bg
+    ]
 
-    # Truecolor: should pass through unchanged
-    Gouache::Term.stub :color_level, :truecolor do
-      result = base_ss.send(:compute_color, "38;2;255;128;64")
-      assert_equal "38;2;255;128;64", result
-    end
+    ss = Gouache::Stylesheet.new({test_mixed: colors}, base: nil)
+    layer = ss[:test_mixed]
+
+    # Should have both fg and bg colors merged separately
+    fg_color = layer[0]  # fg at index 0
+    bg_color = layer[1]  # bg at index 1
+
+    assert_kind_of Gouache::Color, fg_color
+    assert_kind_of Gouache::Color, bg_color
+    assert_equal [255, 0, 0], fg_color.rgb
+    assert_equal 31, fg_color.basic
+    assert_equal [0, 255, 0], bg_color.rgb
+    assert_equal 42, bg_color.basic
   end
 
-  def test_compute_256color_adaptation
-    base_ss = Gouache::Stylesheet.new({}, base: nil)
+  def test_empty_array_rule
+    ss = Gouache::Stylesheet.new({empty_rule: []}, base: nil)
+    layer = ss[:empty_rule]
 
-    # _256 with existing 256-color code should pass through
-    Gouache::Term.stub :color_level, :_256 do
-      result = base_ss.send(:compute_color, "38;5;196")
-      assert_equal "38;5;196", result
-    end
-
-    # _256 with RGB should find nearest color
-    Gouache::Term.stub :color_level, :_256 do
-      Gouache::Term.stub :colors, [[255,0,0], [0,255,0], [0,0,255]] do
-        result = base_ss.send(:compute_color, "38;2;255;0;0")
-        assert_equal "38;5;0", result  # index 0 = red
-      end
-    end
+    # Empty array should result in empty layer
+    assert_kind_of Gouache::Layer, layer
+    assert_equal 0, layer.compact.length
   end
 
-  def test_compute_color_basic_ansi_ranges
-    base_ss = Gouache::Stylesheet.new({}, base: nil)
+  def test_stylesheet_to_h_color_conversion
+    # Test that to_h converts Color objects to SGR strings
+    color = Gouache::Color.rgb(255, 0, 0)
+    ss = Gouache::Stylesheet.new({test_color: color}, base: nil)
+    hash = ss.to_h
 
-    Gouache::Term.stub :color_level, :basic do
-      # Test ALL normal foreground colors (30-37 range)
-      # Test basic color matching with ANSI16 - just verify results are in valid ranges
-      # since exact matches depend on color distance calculations
-
-      # Test some specific cases that should work with ANSI16
-      result = base_ss.send(:compute_color, "38;2;0;0;0")       # black -> index 0 -> 30
-      assert_equal 30, result
-
-      result = base_ss.send(:compute_color, "38;2;255;255;255") # white -> index 15 -> 97
-      assert_equal 97, result
-
-      # Test background colors
-      result = base_ss.send(:compute_color, "48;2;0;0;0")       # black bg -> 40
-      assert_equal 40, result
-
-      result = base_ss.send(:compute_color, "48;2;255;255;255") # white bg -> 107
-      assert_equal 107, result
-
-      # Test 256-color index conversion to basic ranges
-      result = base_ss.send(:compute_color, "38;5;0")   # Should map to closest basic color
-      assert_operator result, :>=, 30
-      assert_operator result, :<=, 107
-      assert [30, 31, 32, 33, 34, 35, 36, 37, 90, 91, 92, 93, 94, 95, 96, 97].include?(result), "256-color fg should map to valid fg range"
-
-      result = base_ss.send(:compute_color, "48;5;196") # Should map to closest basic bg color
-      assert [40, 41, 42, 43, 44, 45, 46, 47, 100, 101, 102, 103, 104, 105, 106, 107].include?(result), "256-color bg should map to valid bg range"
-    end
+    # Color should be converted to SGR string
+    assert_equal "38;2;255;0;0", hash[:test_color]
   end
 
-  def test_compute_color_basic_simple_cases
-    base_ss = Gouache::Stylesheet.new({}, base: nil)
+  def test_stylesheet_to_h_mixed_colors_and_codes
+    # Test to_h with mix of Color objects and SGR codes
+    color = Gouache::Color.rgb(255, 0, 0)
+    ss = Gouache::Stylesheet.new({test_style: [1, color, 4]}, base: nil)
+    hash = ss.to_h
 
-    Gouache::Term.stub :color_level, :basic do
-      # Test with ANSI16 actual colors
-      # Normal foreground colors (30-37)
-      assert_equal 30, base_ss.send(:compute_color, "38;2;0;0;0")       # black -> index 0
-      assert_equal 91, base_ss.send(:compute_color, "38;2;255;0;0")     # pure red -> bright red index 9
-      assert_equal 97, base_ss.send(:compute_color, "38;2;255;255;255") # white -> bright white index 15
-
-      # Normal background colors (40-47)
-      assert_equal 40, base_ss.send(:compute_color, "48;2;0;0;0")       # black bg -> index 0
-      assert_equal 101, base_ss.send(:compute_color, "48;2;255;0;0")    # pure red bg -> bright red index 9
-      assert_equal 107, base_ss.send(:compute_color, "48;2;255;255;255")# white bg -> bright white index 15
-
-      # Dark red should map to normal red
-      assert_equal 31, base_ss.send(:compute_color, "38;2;205;0;0")     # dark red -> normal red index 1
-      assert_equal 41, base_ss.send(:compute_color, "48;2;205;0;0")     # dark red bg -> normal red bg
-
-      # Gray should map to bright black
-      assert_equal 90, base_ss.send(:compute_color, "38;2;127;127;127") # gray -> bright black index 8
-      assert_equal 100, base_ss.send(:compute_color, "48;2;127;127;127")# gray bg -> bright black bg
-    end
+    # Should convert Color to SGR, keep other codes as-is (order may vary)
+    assert_includes hash[:test_style], 1
+    assert_includes hash[:test_style], "38;2;255;0;0"
+    assert_includes hash[:test_style], 4
+    assert_equal 3, hash[:test_style].size
   end
 
-  def test_compute_color_with_256_index_conversion
-    base_ss = Gouache::Stylesheet.new({}, base: nil)
+  def test_stylesheet_to_h_single_color_unwrapped
+    # Test that single Color gets unwrapped from array
+    color = Gouache::Color.sgr(31)
+    ss = Gouache::Stylesheet.new({test_single: color}, base: nil)
+    hash = ss.to_h
 
-    # Save original constant
-    original_colors256 = Gouache::Term::COLORS256
-
-    # Create mock colors array with 256 entries, setting index 196 to red
-    mock_colors = Array.new(256, [0, 0, 0])
-    mock_colors[196] = [255, 0, 0]
-
-    # Replace constant temporarily
-    Gouache::Term.send(:remove_const, :COLORS256)
-    Gouache::Term.const_set(:COLORS256, mock_colors)
-
-    begin
-      # Basic mode should convert 256-color index to RGB then find nearest
-      Gouache::Term.stub :color_level, :basic do
-        result = base_ss.send(:compute_color, "38;5;196")
-        assert_equal 91, result  # nearest to bright red in ANSI16
-      end
-    ensure
-      # Restore original constant
-      Gouache::Term.send(:remove_const, :COLORS256)
-      Gouache::Term.const_set(:COLORS256, original_colors256)
-    end
+    # Single item should be unwrapped
+    assert_equal 31, hash[:test_single]
   end
 
-  def test_compute_decl_integrates_compute_color
-    # Test that RX_COLOR pattern in compute_decl calls compute_color
-    Gouache::Term.stub :color_level, :truecolor do
-      ss = Gouache::Stylesheet.new({test_color: "38;2;255;128;64"}, base: nil)
-      layer = ss[:test_color]
-      # Should contain the complete color string
-      assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;2;255;128;64"), layer
-    end
+  def test_compute_decl_nil_case
+    result = @ss.send(:compute_decl, nil)
+    assert_equal Gouache::Layer.empty, result
   end
+
+  def test_compute_decl_color_case
+    color = Gouache::Color.rgb(255, 0, 0)
+    result = @ss.send(:compute_decl, color)
+    assert_equal Gouache::Layer.from(color), result
+  end
+
+  def test_compute_decl_layer_case
+    layer = Gouache::Layer.from([31, 1])  # red foreground + bold
+    result = @ss.send(:compute_decl, layer)
+    assert_equal layer, result
+  end
+
+  def test_compute_decl_symbol_case
+    result = @ss.send(:compute_decl, :red)
+    assert_equal @ss[:red], result
+  end
+
+  def test_compute_decl_array_case_basic
+    result = @ss.send(:compute_decl, [31, 1])  # red foreground + bold
+    expected = Gouache::Layer.from([31, 1])
+    assert_equal expected, result
+  end
+
+  def test_compute_decl_ru_basic_case
+    # Test various RU_BASIC ranges: 39, 49, 30..37, 40..47, 90..97, 100..107
+
+    # Single values: 39 (default fg), 49 (default bg)
+    result = @ss.send(:compute_decl, 39)
+    expected = Gouache::Layer.from(Gouache::Color.sgr(39))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, 49)
+    expected = Gouache::Layer.from(Gouache::Color.sgr(49))
+    assert_equal expected, result
+
+    # 30..37 range (standard fg colors)
+    result = @ss.send(:compute_decl, 31)  # red foreground
+    expected = Gouache::Layer.from(Gouache::Color.sgr(31))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, 37)  # white foreground
+    expected = Gouache::Layer.from(Gouache::Color.sgr(37))
+    assert_equal expected, result
+
+    # 40..47 range (standard bg colors)
+    result = @ss.send(:compute_decl, 42)  # green background
+    expected = Gouache::Layer.from(Gouache::Color.sgr(42))
+    assert_equal expected, result
+
+    # 90..97 range (bright fg colors)
+    result = @ss.send(:compute_decl, 91)  # bright red foreground
+    expected = Gouache::Layer.from(Gouache::Color.sgr(91))
+    assert_equal expected, result
+
+    # 100..107 range (bright bg colors)
+    result = @ss.send(:compute_decl, 102)  # bright green background
+    expected = Gouache::Layer.from(Gouache::Color.sgr(102))
+    assert_equal expected, result
+  end
+
+  def test_compute_decl_rx_basic_case
+    # Test RX_BASIC pattern: string versions of basic SGR codes
+    # RX_BASIC matches /\A(?:3|4|9|10)[0-7]\z/ - colors 30-37, 40-47, 90-97, 100-107
+    # Plus individual values 39, 49
+
+    # Default colors (39, 49)
+    result = @ss.send(:compute_decl, "39")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("39"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "49")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("49"))
+    assert_equal expected, result
+
+    # Standard fg colors (30-37)
+    result = @ss.send(:compute_decl, "31")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("31"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "37")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("37"))
+    assert_equal expected, result
+
+    # Standard bg colors (40-47)
+    result = @ss.send(:compute_decl, "42")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("42"))
+    assert_equal expected, result
+
+    # Bright fg colors (90-97)
+    result = @ss.send(:compute_decl, "91")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("91"))
+    assert_equal expected, result
+
+    # Bright bg colors (100-107)
+    result = @ss.send(:compute_decl, "102")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("102"))
+    assert_equal expected, result
+  end
+
+  def test_compute_decl_rx_ext_color_case
+    # Test RX_EXT_COLOR pattern: extended color sequences
+    # Pattern: /\A([34]8);(?:5;(#{D8})|2;(#{D8});(#{D8});(#{D8}))\z/
+
+    # 256-color format: 38;5;n (fg) or 48;5;n (bg)
+    result = @ss.send(:compute_decl, "38;5;196")  # bright red fg
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;5;196"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "48;5;46")   # bright green bg
+    expected = Gouache::Layer.from(Gouache::Color.sgr("48;5;46"))
+    assert_equal expected, result
+
+    # 24-bit RGB format: 38;2;r;g;b (fg) or 48;2;r;g;b (bg)
+    result = @ss.send(:compute_decl, "38;2;255;0;0")  # red fg
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;2;255;0;0"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "48;2;0;255;0")  # green bg
+    expected = Gouache::Layer.from(Gouache::Color.sgr("48;2;0;255;0"))
+    assert_equal expected, result
+  end
+
+  def test_compute_decl_invalid_ext_color_patterns
+    # Invalid RX_EXT_COLOR patterns - these should not match the regex
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "38;5")     # incomplete 256-color
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "38;2;255") # incomplete RGB
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "38;5;256") # 256-color out of range (D8 is 0-255)
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "38;2;256;0;0") # RGB value out of range
+    }
+  end
+
+  def test_compute_decl_ru_sgr_nc_case
+    # Test RU_SGR_NC: valid SGR codes (0..107) excluding RU_BASIC, 38, 48
+    # RU_SGR_NC = RangeExclusion.new 0..107, RU_BASIC, 38, 48
+    # Excludes: 39, 49, 30..37, 40..47, 90..97, 100..107, 38, 48
+
+    # Valid non-color SGR codes that should return the integer directly
+    result = @ss.send(:compute_decl, 0)   # reset - replaces with BASE layer
+    assert_equal Gouache::Layer::BASE, result
+
+    result = @ss.send(:compute_decl, 1)   # bold
+    assert_equal Gouache::Layer.from(1), result
+
+    result = @ss.send(:compute_decl, 2)   # dim
+    assert_equal Gouache::Layer.from(2), result
+
+    result = @ss.send(:compute_decl, 3)   # italic
+    assert_equal Gouache::Layer.from(3), result
+
+    result = @ss.send(:compute_decl, 4)   # underline
+    assert_equal Gouache::Layer.from(4), result
+
+    result = @ss.send(:compute_decl, 5)   # slow blink
+    assert_equal Gouache::Layer.from(5), result
+
+    result = @ss.send(:compute_decl, 7)   # reverse
+    assert_equal Gouache::Layer.from(7), result
+
+    result = @ss.send(:compute_decl, 8)   # conceal
+    assert_equal Gouache::Layer.from(8), result
+
+    result = @ss.send(:compute_decl, 9)   # strikethrough
+    assert_equal Gouache::Layer.from(9), result
+
+    # Reset codes in 20s range
+    result = @ss.send(:compute_decl, 22)  # normal intensity
+    assert_equal Gouache::Layer.from(22), result
+
+    result = @ss.send(:compute_decl, 24)  # no underline
+    assert_equal Gouache::Layer.from(24), result
+
+    # Test weirder numbers in RU_SGR_NC range - unknown codes become all-nil layers
+    result = @ss.send(:compute_decl, 99)  # unknown SGR code
+    assert_equal Gouache::Layer.from(99), result
+    assert_equal [nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil], result
+
+    result = @ss.send(:compute_decl, 50)  # between basic ranges
+    assert_equal Gouache::Layer.from(50), result
+    assert_equal [nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil], result
+
+    result = @ss.send(:compute_decl, 89)  # just below bright fg range
+    assert_equal Gouache::Layer.from(89), result
+    assert_equal [nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil], result
+
+    result = @ss.send(:compute_decl, 98)  # just above bright fg range
+    assert_equal Gouache::Layer.from(98), result
+    assert_equal [nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil], result
+  end
+
+  def test_compute_decl_rx_int_case
+    # Test RX_INT pattern: string integers matching D8 (0-255)
+
+    # Basic cases
+    result = @ss.send(:compute_decl, "0")
+    assert_equal @ss.send(:compute_decl, 0), result
+
+    result = @ss.send(:compute_decl, "31")
+    assert_equal @ss.send(:compute_decl, 31), result
+
+    result = @ss.send(:compute_decl, "107")
+    assert_equal @ss.send(:compute_decl, 107), result
+
+    # Edge cases for D8 pattern
+    result = @ss.send(:compute_decl, "1")
+    assert_equal @ss.send(:compute_decl, 1), result
+
+    result = @ss.send(:compute_decl, "99")
+    assert_equal @ss.send(:compute_decl, 99), result
+
+    result = @ss.send(:compute_decl, "50")
+    assert_equal @ss.send(:compute_decl, 50), result
+
+    result = @ss.send(:compute_decl, "89")
+    assert_equal @ss.send(:compute_decl, 89), result
+
+    result = @ss.send(:compute_decl, "23")
+    assert_equal @ss.send(:compute_decl, 23), result
+  end
+
+  def test_compute_decl_rx_sgr_case
+    # Test RX_SGR pattern: SGR sequences that get scanned and recursively processed
+    # RX_SGR = /\A[\d;]+\z/
+
+    result = @ss.send(:compute_decl, "31;1")
+    expected_parts = Gouache.scan_sgr("31;1").map{ @ss.send(:compute_decl, it) }
+    expected = Gouache::Layer.from(expected_parts)
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "38;5;196;1")
+    expected_parts = Gouache.scan_sgr("38;5;196;1").map{ @ss.send(:compute_decl, it) }
+    expected = Gouache::Layer.from(expected_parts)
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "0;31;42")
+    expected_parts = Gouache.scan_sgr("0;31;42").map{ @ss.send(:compute_decl, it) }
+    expected = Gouache::Layer.from(expected_parts)
+    assert_equal expected, result
+
+    # Test invalid SGR codes within valid SGR strings
+    # These match RX_SGR pattern but contain codes that don't match any pattern
+
+    # SGR string with out-of-range code (255 > 107)
+    # scan_sgr parses it, but 255 will cause NoMatchingPatternError in recursive call
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "31;255;1")
+    }
+
+    # SGR string with invalid extended color (wrong role)
+    result = @ss.send(:compute_decl, "28;5;100")
+    # scan_sgr breaks it into [28, 5, 100] - all valid individually
+    expected_parts = Gouache.scan_sgr("28;5;100").map{ @ss.send(:compute_decl, it) }
+    expected = Gouache::Layer.from(expected_parts)
+    assert_equal expected, result
+  end
+
+  def test_compute_decl_rx_sel_pattern_compositions
+    # Test RX_SEL pattern: /\A[a-z]\w*[?!]?\z/i
+    # Must start with letter, followed by word chars, optionally ending with ? or !
+
+    # Create stylesheet with actual rules for these selectors
+    test_styles = {
+      a: 1,
+      Z: 2,
+      red123: 31,
+      my_color: 32,
+      Color_123_ABC: 33,
+      red?: 34,
+      my_method?: 35,
+      bold!: 1,
+      danger_style!: 91,
+      CamelCase: 36,
+      mixedCase123!: 92
+    }
+    ss = Gouache::Stylesheet.new(test_styles, base: nil)
+
+    # Basic letter-only selectors
+    result = ss.send(:compute_decl, "a")
+    assert_equal ss.send(:compute_rule, :a), result
+    assert_equal Gouache::Layer.from(1), result
+
+    result = ss.send(:compute_decl, "Z")  # case insensitive
+    assert_equal ss.send(:compute_rule, :Z), result
+    assert_equal Gouache::Layer.from(2), result
+
+    # Letters with word characters (letters, digits, underscore)
+    result = ss.send(:compute_decl, "red123")
+    assert_equal ss.send(:compute_rule, :red123), result
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr(31)), result
+
+    result = ss.send(:compute_decl, "my_color")
+    assert_equal ss.send(:compute_rule, :my_color), result
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr(32)), result
+
+    result = ss.send(:compute_decl, "Color_123_ABC")
+    assert_equal ss.send(:compute_rule, :Color_123_ABC), result
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr(33)), result
+
+    # With optional ? suffix
+    result = ss.send(:compute_decl, "red?")
+    assert_equal ss.send(:compute_rule, :red?), result
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr(34)), result
+
+    result = ss.send(:compute_decl, "my_method?")
+    assert_equal ss.send(:compute_rule, :my_method?), result
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr(35)), result
+
+    # With optional ! suffix
+    result = ss.send(:compute_decl, "bold!")
+    assert_equal ss.send(:compute_rule, :bold!), result
+    assert_equal Gouache::Layer.from(1), result
+
+    result = ss.send(:compute_decl, "danger_style!")
+    assert_equal ss.send(:compute_rule, :danger_style!), result
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr(91)), result
+
+    # Mixed case variations
+    result = ss.send(:compute_decl, "CamelCase")
+    assert_equal ss.send(:compute_rule, :CamelCase), result
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr(36)), result
+
+    result = ss.send(:compute_decl, "mixedCase123!")
+    assert_equal ss.send(:compute_rule, :mixedCase123!), result
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr(92)), result
+  end
+
+  def test_compute_decl_rx_fn_color_functions
+    # Test all RX_FN_* color function patterns
+
+    # RX_FN_HEX: /(on)?#(\h{6})/
+    result = @ss.send(:compute_decl, "#ff0000")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;2;255;0;0"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "on#00ff00")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("48;2;0;255;0"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "#123abc")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;2;18;58;188"))
+    assert_equal expected, result
+
+    # RX_FN_RGB: /(on_)? rgb \(\s* (D8) \s*,\s* (D8) \s*,\s* (D8) \s*\)/
+    result = @ss.send(:compute_decl, "rgb(255,128,64)")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;2;255;128;64"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "on_rgb(0, 255, 0)")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("48;2;0;255;0"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "rgb( 100 , 150 , 200 )")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;2;100;150;200"))
+    assert_equal expected, result
+
+    # RX_FN_CUBE: /(on)?#[0-5]{3}/
+    result = @ss.send(:compute_decl, "#500")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;5;196"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "on#023")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("48;5;31"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "#135")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;5;75"))
+    assert_equal expected, result
+
+    # RX_FN_GRAY: /(on_)? gray \(\s* (D24) \s* \)/
+    result = @ss.send(:compute_decl, "gray(12)")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;5;244"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "on_gray( 0 )")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("48;5;232"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "gray(23)")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;5;255"))
+    assert_equal expected, result
+
+    # RX_FN_256: /(on_)? 256 \(\s* (D8) \s* \)/
+    result = @ss.send(:compute_decl, "256(196)")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;5;196"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "on_256( 46 )")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("48;5;46"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "256(255)")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("38;5;255"))
+    assert_equal expected, result
+
+    # Test out of bounds values - should raise NoMatchingPatternError
+
+    # RX_FN_HEX: invalid hex digits
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "#gggggg")  # invalid hex
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "#12345")   # too short
+    }
+
+    # RX_FN_RGB: out of D8 range (0-255)
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "rgb(256,0,0)")  # > 255
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "rgb(100,300,50)")  # > 255
+    }
+
+    # RX_FN_CUBE: out of [0-5] range
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "#600")  # 6 > 5
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "#159")  # 9 > 5
+    }
+
+    # RX_FN_GRAY: out of D24 range (0-23)
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "gray(24)")  # > 23
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "gray(100)")  # > 23
+    }
+
+    # RX_FN_256: out of D8 range (0-255)
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "256(256)")  # > 255
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "256(999)")  # > 255
+    }
+  end
+
 end

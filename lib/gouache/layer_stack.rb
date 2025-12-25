@@ -1,4 +1,5 @@
 require_relative "layer"
+require_relative "layer_proxy"
 
 class Gouache
 
@@ -20,6 +21,7 @@ class Gouache
       self << top.overlay(layer)
       top.extend LayerTags
       top.tag = tag
+      layer&.effects&.each{ it.(LayerProxy.new(top), LayerProxy.new(under)) }
       top.freeze
       top.diff(under)
     end

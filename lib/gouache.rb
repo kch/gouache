@@ -7,6 +7,7 @@ require_relative "gouache/builder"
 require_relative "gouache/wrap"
 require_relative "gouache/term"
 require_relative "gouache/color"
+require_relative "gouache/layer_proxy"
 require "forwardable"
 
 class Gouache

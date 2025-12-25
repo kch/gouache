@@ -39,6 +39,7 @@ class Gouache
       role = ->{ $1 ? 48 : 38 }
       Layer.from case x
       in nil          then []
+      in Proc         then x
       in Color        then x
       in Layer        then x
       in Symbol       then compute_rule(x)

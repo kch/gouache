@@ -731,5 +731,55 @@ class TestLayer < Minitest::Test
     assert_equal "91", result
   end
 
+  def test_effects_attribute
+    layer = Gouache::Layer.empty
+    assert_nil layer.effects
+
+    effects = [proc { "effect1" }, proc { "effect2" }]
+    layer.effects = effects
+    assert_equal effects, layer.effects
+  end
+
+  def test_layer_from_with_effects
+    effect1 = proc { |top, under| "effect1" }
+    effect2 = proc { |top, under| "effect2" }
+
+    layer = Gouache::Layer.from(1, effect1, 4, effect2, 31)
+
+    assert_equal 1, layer[9]   # bold range index
+    assert_equal 4, layer[8]            # underline
+    assert_equal 31, layer[0]           # fg red
+    assert_equal [effect1, effect2], layer.effects
+  end
+
+  def test_layer_from_separates_effects_from_sgr_codes
+    effect = proc { |top, under| "test" }
+    layer = Gouache::Layer.from([1, effect, [4, 31]])
+
+    assert_equal 1, layer[9]    # bold
+    assert_equal 4, layer[8]    # underline
+    assert_equal 31, layer[0]   # fg red
+    assert_equal [effect], layer.effects
+  end
+
+  def test_layer_from_with_only_effects
+    effect1 = proc { "e1" }
+    effect2 = proc { "e2" }
+
+    layer = Gouache::Layer.from(effect1, effect2)
+
+    assert_equal Gouache::Layer.empty, layer
+    assert_equal [effect1, effect2], layer.effects
+  end
+
+  def test_layer_from_with_no_effects
+    layer = Gouache::Layer.from(1, 4, 31)
+
+    assert_equal 1, layer[9]    # bold
+    assert_equal 4, layer[8]    # underline
+    assert_equal 31, layer[0]   # fg red
+    assert_equal [], layer.effects
+  end
+
 
 end

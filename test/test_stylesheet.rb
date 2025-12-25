@@ -1274,4 +1274,62 @@ class TestStylesheet < Minitest::Test
     }
   end
 
+  def test_compute_decl_proc_case
+    effect = proc { |top, under| "test effect" }
+    result = @ss.send(:compute_decl, effect)
+
+    assert_instance_of Gouache::Layer, result
+    assert_equal [effect], result.effects
+    assert_equal Gouache::Layer.empty, result
+  end
+
+  def test_compute_decl_with_proc_and_sgr_mixed
+    effect1 = proc { |top, under| top.bold = true }
+    effect2 = proc { |top, under| under.italic = false }
+
+    layer = @ss.send(:compute_decl, [effect1, effect2, 31])
+    assert_equal [effect1, effect2], layer.effects
+    assert_equal 31, layer[0]  # fg red
+  end
+
+  def test_compute_decl_deep_nested_arrays_mixed_types
+    effect1 = proc { |top, under| top.bold = true }
+    effect2 = proc { |top, under| under.italic = false }
+    color1 = Gouache::Color.rgb(255, 0, 0)
+    color2 = Gouache::Color.on_rgb(0, 255, 0)
+
+    # Deep nesting: [sgr, [effect, [color, [effect, sgr]], color], sgr]
+    nested_array = [
+      1,                                    # bold
+      [
+        effect1,                           # first effect
+        [
+          color1,                          # red fg
+          [effect2, 4],                    # second effect + underline
+          32                               # green fg (overrides red)
+        ],
+        color2                             # green bg
+      ],
+      3                                    # italic
+    ]
+
+    layer = @ss.send(:compute_decl, nested_array)
+
+    # Check effects are collected
+    assert_equal [effect1, effect2], layer.effects
+
+    # Check SGR codes are applied
+    assert_equal 1, layer[9]   # bold
+    assert_equal 4, layer[8]   # underline
+    assert_equal 3, layer[2]   # italic
+
+    # Check colors - red and green fg merge with green as fallback for red
+    fg_color = layer[0]
+    assert_instance_of Gouache::Color, fg_color
+    assert_equal [255, 0, 0], fg_color.rgb  # red rgb
+    assert_equal 32, fg_color.basic         # green fallback
+    assert_instance_of Gouache::Color, layer[1]  # bg color object
+    assert_equal Gouache::Color::BG, layer[1].role
+  end
+
 end

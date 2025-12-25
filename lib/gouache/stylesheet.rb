@@ -36,14 +36,19 @@ class Gouache
     RX_FN_GRAY   = /(on_)? gray \(\s* (#{D24}) \s* \)/x.w
 
     private def compute_decl(x)
+      Layer.from _compute_decl(x)
+    end
+
+    private def _compute_decl(x)
       role = ->{ $1 ? 48 : 38 }
-      Layer.from case x
+      case x
       in nil          then []
       in Proc         then x
       in Color        then x
       in Layer        then x
       in Symbol       then compute_rule(x)
-      in Array        then x.flat_map{ compute_decl it }.partition{ Color === it }.then{|cs,rs| [*Color.merge(*cs).flatten.compact, *rs] }
+      in Array        then x.flat_map{ _compute_decl it }.partition{ Color === it }
+                            .then{|cs,rs| [*Color.merge(*cs).flatten.compact, *rs] }
       in RU_BASIC     then Color.sgr x
       in RX_BASIC     then Color.sgr x
       in RX_EXT_COLOR then Color.sgr x
@@ -53,8 +58,8 @@ class Gouache
       in RX_FN_GRAY   then Color.new role: role[], gray: $2.to_i
       in RX_FN_256    then Color.sgr [role[], 5, $2]*?;
       in RU_SGR_NC    then x
-      in RX_INT       then compute_decl(x.to_i)
-      in RX_SGR       then Gouache.scan_sgr(x).map{ compute_decl it }
+      in RX_INT       then _compute_decl(x.to_i)
+      in RX_SGR       then Gouache.scan_sgr(x).map{ _compute_decl it }
       in RX_SEL       then compute_rule(x.to_sym)
       end
     end

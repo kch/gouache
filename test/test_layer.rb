@@ -329,8 +329,17 @@ class TestLayer < Minitest::Test
 
   def test_base_layer_values
     base = Gouache::Layer::BASE
-    assert_equal 39, base[0]  # fg reset
-    assert_equal 49, base[1]  # bg reset
+
+    # fg and bg positions should contain Color objects
+    assert_kind_of Gouache::Color, base[0]  # fg reset
+    assert_equal 39, base[0].basic
+    assert_equal 38, base[0].role
+
+    assert_kind_of Gouache::Color, base[1]  # bg reset
+    assert_equal 49, base[1].basic
+    assert_equal 48, base[1].role
+
+    # Other positions should contain integers
     assert_equal 23, base[2]  # italic reset
     assert_equal 22, base[9]  # bold reset
     assert_equal 22, base[10] # dim reset (same as bold)

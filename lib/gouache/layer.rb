@@ -1,4 +1,5 @@
 require_relative "utils"
+require_relative "color"
 
 class Gouache
 
@@ -35,7 +36,7 @@ class Gouache
     def RANGES.for(x) = values.filter_map{|r| r.index if r.member? x }.then{ it if it.any? }
     RANGES.freeze
 
-    BASE = new(RANGES.values.map(&:off)).freeze
+    BASE = new(RANGES.values.map(&:off).tap{ it[0,2] = it[0,2].map{ Color.sgr it }}).freeze
 
     # transforms xs into a valid array of sgr codes
     # special handling for dim/bold:

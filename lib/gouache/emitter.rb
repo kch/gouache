@@ -42,8 +42,8 @@ class Gouache
 
     private def flush
       return self unless @queue.any?
-      sgr = Layer.from(@queue).diff(@flushed)
-      @flushed = Layer.from(sgr)
+      @flushed = Layer.from Layer.from(@queue).diff(@flushed)
+      sgr = @flushed.to_sgr
       @queue.clear
       return self unless sgr.any?
       @got_sgr = true

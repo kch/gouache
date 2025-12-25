@@ -34,7 +34,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Valid SGR should be preserved and not affect subsequent tags
     text_with_sgr = "start \e[31mred text"
     result = @go[text_with_sgr, :bold, "should be bold not red"]
-    expected = "start \e[31mred text\e[39;22;1mshould be bold not red\e[0m"  # 31 preserved, reset to default, then bold applied
+    expected = "start \e[31mred text\e[22;39;1mshould be bold not red\e[0m"  # 31 preserved, reset to default, then bold applied
     assert_equal expected, result
   end
 
@@ -62,7 +62,7 @@ class TestSafeEmitSgr < Minitest::Test
       r << "text with \e[31mmanual red\e[0m "  # manual SGR in appended text
       r.bold("bold text")                      # then a tagged section
     }
-    expected = "\e[31mplain text with manual red\e[39m \e[31;22;1mbold text\e[0m"
+    expected = "\e[31mplain text with manual red\e[39m \e[22;31;1mbold text\e[0m"
     assert_equal expected, result
   end
 
@@ -72,7 +72,7 @@ class TestSafeEmitSgr < Minitest::Test
       b << "start \e[31mred\e[0m middle \e[32mgreen\e[0m end"
       b.bold("final")
     }
-    expected = "\e[34mstart \e[31mred\e[39m middle \e[32mgreen\e[39m end\e[34;22;1mfinal\e[0m"
+    expected = "\e[34mstart \e[31mred\e[39m middle \e[32mgreen\e[39m end\e[22;34;1mfinal\e[0m"
     assert_equal expected, result
   end
 
@@ -84,7 +84,7 @@ class TestSafeEmitSgr < Minitest::Test
       }
       r << " after bold"
     }
-    expected = "\e[31;22;1mbold with \e[33myellow\e[39;22m inside\e[31m after bold\e[0m"
+    expected = "\e[22;31;1mbold with \e[33myellow\e[22;39m inside\e[31m after bold\e[0m"
     assert_equal expected, result
   end
 
@@ -104,7 +104,7 @@ class TestSafeEmitSgr < Minitest::Test
       r << "red \e[32mgreen\e[39m back"  # 39 resets foreground only
       r.bold("bold")
     }
-    expected = "\e[31mred \e[32mgreen\e[39m back\e[31;22;1mbold\e[0m"
+    expected = "\e[31mred \e[32mgreen\e[39m back\e[22;31;1mbold\e[0m"
     assert_equal expected, result
   end
 
@@ -161,7 +161,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Multi-code SGR sequences should be processed with proper ordering
     complex_sgr = "start \e[1;31;4mbold red underline\e[0m end"
     result = @go[complex_sgr, :italic, "italic"]
-    expected = "start \e[31;4;22;1mbold red underline\e[39;24;22m end\e[3mitalic\e[0m"  # bold/dim at end
+    expected = "start \e[22;31;4;1mbold red underline\e[22;39;24m end\e[3mitalic\e[0m"  # bold/dim at end
     assert_equal expected, result
   end
 
@@ -228,7 +228,7 @@ class TestSafeEmitSgr < Minitest::Test
     result = @go.red { |r|
       r.bold("bold #{middle.wrap} content")     # second wrap level inside builder
     }
-    expected = "\e[31;22;1mbold middle inner \e[4munderline\e[24m text content\e[0m"
+    expected = "\e[22;31;1mbold middle inner \e[4munderline\e[24m text content\e[0m"
     assert_equal expected, result
   end
 
@@ -248,7 +248,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Manually create string ending with wrap marker
     wrapped_end = "start#{Gouache::WRAP_OPEN}#{content}#{Gouache::WRAP_CLOSE}"
     result = @go[wrapped_end, :bold, "bold"]
-    expected = "startend \e[33myellow\e[39;22;1mbold\e[0m"  # wrapped content extracted
+    expected = "startend \e[33myellow\e[22;39;1mbold\e[0m"  # wrapped content extracted
     assert_equal expected, result
   end
 

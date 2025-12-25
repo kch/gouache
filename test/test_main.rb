@@ -262,21 +262,21 @@ class TestMain < Minitest::Test
   def test_class_method_missing_with_chaining
     # Class-level chained builder methods should work
     result = Gouache.red.bold("content")
-    expected = "\e[31;22;1mcontent\e[0m"
+    expected = "\e[22;31;1mcontent\e[0m"
     assert_equal expected, result
   end
 
   def test_class_method_missing_with_block
     # Class-level builder methods with blocks should work
     result = Gouache.red {|x| x.bold("content") }
-    expected = "\e[31;22;1mcontent\e[0m"
+    expected = "\e[22;31;1mcontent\e[0m"
     assert_equal expected, result
   end
 
   def test_class_method_missing_with_arrays
     # Class-level builder methods should handle arrays
     result = Gouache.red([:bold, "content"])
-    expected = "\e[31;22;1mcontent\e[0m"
+    expected = "\e[22;31;1mcontent\e[0m"
     assert_equal expected, result
   end
 end

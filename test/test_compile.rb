@@ -49,7 +49,7 @@ class TestCompile < Minitest::Test
   def test_compile_multiple_symbols_same_array_nested
     result = @go[:bold, :red, "text"]  # Multiple symbols auto-nest
     # Multiple symbols in same array get nested: [:bold, [:red, "text"]]
-    expected = "\e[31;22;1mtext\e[0m"                           # Combined SGR codes with comprehensive reset
+    expected = "\e[22;31;1mtext\e[0m"                           # Combined SGR codes with comprehensive reset
     assert_equal expected, result
   end
 
@@ -86,7 +86,7 @@ class TestCompile < Minitest::Test
   def test_compile_symbol_chain_nesting
     result = @go[:bold, :red, :italic, "text"]  # Symbol chain structure
     # Should nest as [:bold, [:red, [:italic, "text"]]]
-    expected = "\e[31;3;22;1mtext\e[0m"                                   # All styles combined into one SGR
+    expected = "\e[22;31;3;1mtext\e[0m"                                   # All styles combined into one SGR
     assert_equal expected, result
   end
 

@@ -51,7 +51,7 @@ class TestRepaint < Minitest::Test
     # Complex multi-code SGR sequences should be properly ordered and reset incrementally
     problematic = "text \e[1;31;4mbold red underline\e[0m end"
     result = @go.repaint(problematic)
-    expected = "text \e[31;4;22;1mbold red underline\e[39;24;22m end\e[0m"  # 0m -> specific closes for each style
+    expected = "text \e[22;31;4;1mbold red underline\e[22;39;24m end\e[0m"  # 0m -> specific closes for each style
     assert_equal expected, result
   end
 

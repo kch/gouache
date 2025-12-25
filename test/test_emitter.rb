@@ -5,7 +5,44 @@ require_relative "test_helper"
 class TestEmitter < Minitest::Test
   def setup
     @gouache = Gouache.new
+
+    # Override basic_colors to always return ANSI16 without hitting osc
+    Gouache::Term.singleton_class.alias_method :basic_colors_original, :basic_colors
+    Gouache::Term.singleton_class.undef_method :basic_colors
+    Gouache::Term.singleton_class.define_method(:basic_colors) { Gouache::Term::ANSI16.dup.freeze }
+
+    # Override term_seq to raise and prevent OSC calls
+    Gouache::Term.singleton_class.alias_method :term_seq_original, :term_seq
+    Gouache::Term.singleton_class.undef_method :term_seq
+    Gouache::Term.singleton_class.define_method(:term_seq) { |*args| raise "OSC calls not allowed in tests" }
+
+    # Reset memoized colors
+    Gouache::Term.instance_variable_set(:@colors, nil)
+    Gouache::Term.instance_variable_set(:@fg_color, nil)
+    Gouache::Term.instance_variable_set(:@bg_color, nil)
+    Gouache::Term.instance_variable_set(:@basic_colors, nil)
+    # Reset class variable for color indices cache
+    Gouache::Term.class_variable_set(:@@color_indices, {})
+
     @emitter = Gouache::Emitter.new(instance: @gouache)
+  end
+
+  def teardown
+    # Restore original methods
+    Gouache::Term.singleton_class.undef_method :basic_colors
+    Gouache::Term.singleton_class.alias_method :basic_colors, :basic_colors_original
+    Gouache::Term.singleton_class.undef_method :basic_colors_original
+
+    Gouache::Term.singleton_class.undef_method :term_seq
+    Gouache::Term.singleton_class.alias_method :term_seq, :term_seq_original
+    Gouache::Term.singleton_class.undef_method :term_seq_original
+
+    # Reset memoized colors
+    Gouache::Term.instance_variable_set(:@colors, nil)
+    Gouache::Term.instance_variable_set(:@fg_color, nil)
+    Gouache::Term.instance_variable_set(:@bg_color, nil)
+    Gouache::Term.instance_variable_set(:@basic_colors, nil)
+    Gouache::Term.class_variable_set(:@@color_indices, {})
   end
 
   def test_initialize_with_gouache_instance
@@ -834,5 +871,106 @@ class TestEmitter < Minitest::Test
 
     result = @emitter.emit!
     assert_equal "\e[22;1mbold \e[31;1;2mbold-dim-red \e[22;39;1mback-to-bold\e[0m", result
+  end
+
+  def test_flush_uses_fallback_truecolor
+    Gouache::Term.stub :color_level, :truecolor do
+      gouache = Gouache.new(test_color: Gouache::Color.rgb(255, 128, 64))
+      emitter = Gouache::Emitter.new(instance: gouache)
+      emitter.open_tag(:test_color)
+      emitter << "text"
+      emitter.close_tag
+      result = emitter.emit!
+      assert_equal "\e[38;2;255;128;64mtext\e[0m", result
+    end
+  end
+
+  def test_flush_uses_fallback_256
+    Gouache::Term.stub :color_level, :_256 do
+      gouache = Gouache.new(test_color: Gouache::Color.rgb(255, 0, 0))
+      emitter = Gouache::Emitter.new(instance: gouache)
+      emitter.open_tag(:test_color)
+      emitter << "text"
+      emitter.close_tag
+      result = emitter.emit!
+      assert_match(/\e\[38;5;\d+mtext\e\[0m/, result)
+    end
+  end
+
+  def test_flush_uses_fallback_basic
+    Gouache::Term.stub :color_level, :basic do
+      gouache = Gouache.new(test_color: Gouache::Color.rgb(255, 0, 0))
+      emitter = Gouache::Emitter.new(instance: gouache)
+      emitter.open_tag(:test_color)
+      emitter << "text"
+      emitter.close_tag
+      result = emitter.emit!
+      assert_equal "\e[91mtext\e[0m", result
+    end
+  end
+
+  def test_flush_uses_fallback_basic_background
+    Gouache::Term.stub :color_level, :basic do
+      gouache = Gouache.new(test_color: Gouache::Color.on_rgb(255, 0, 0))
+      emitter = Gouache::Emitter.new(instance: gouache)
+      emitter.open_tag(:test_color)
+      emitter << "text"
+      emitter.close_tag
+      result = emitter.emit!
+      assert_equal "\e[101mtext\e[0m", result
+    end
+  end
+
+  def test_merge_color_fallback_truecolor
+    Gouache::Term.stub :color_level, :truecolor do
+      gouache = Gouache.new(test_color: [Gouache::Color.rgb(255, 128, 64), Gouache::Color.cube(5, 0, 0), Gouache::Color.sgr(31)])
+      emitter = Gouache::Emitter.new(instance: gouache)
+      emitter.open_tag(:test_color)
+      emitter << "text"
+      emitter.close_tag
+      result = emitter.emit!
+      assert_equal "\e[38;2;255;128;64mtext\e[0m", result
+    end
+  end
+
+  def test_merge_color_fallback_256
+    Gouache::Term.stub :color_level, :_256 do
+      gouache = Gouache.new(test_color: [Gouache::Color.rgb(255, 128, 64), Gouache::Color.cube(5, 0, 0), Gouache::Color.sgr(31)])
+      emitter = Gouache::Emitter.new(instance: gouache)
+      emitter.open_tag(:test_color)
+      emitter << "text"
+      emitter.close_tag
+      result = emitter.emit!
+      assert_equal "\e[38;5;196mtext\e[0m", result
+    end
+  end
+
+  def test_merge_color_fallback_basic
+    Gouache::Term.stub :color_level, :basic do
+      gouache = Gouache.new(test_color: [Gouache::Color.rgb(255, 128, 64), Gouache::Color.cube(5, 0, 0), Gouache::Color.sgr(31)])
+      emitter = Gouache::Emitter.new(instance: gouache)
+      emitter.open_tag(:test_color)
+      emitter << "text"
+      emitter.close_tag
+      result = emitter.emit!
+      assert_equal "\e[31mtext\e[0m", result
+    end
+  end
+
+  def test_merge_color_fallback_mixed_roles
+    Gouache::Term.stub :color_level, :basic do
+      gouache = Gouache.new(test_color: [
+        Gouache::Color.rgb(255, 0, 0),
+        Gouache::Color.on_cube(0, 5, 0),
+        Gouache::Color.sgr(31),
+        Gouache::Color.sgr(42)
+      ])
+      emitter = Gouache::Emitter.new(instance: gouache)
+      emitter.open_tag(:test_color)
+      emitter << "text"
+      emitter.close_tag
+      result = emitter.emit!
+      assert_equal "\e[31;42mtext\e[0m", result
+    end
   end
 end

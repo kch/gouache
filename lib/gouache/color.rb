@@ -28,7 +28,7 @@ class Gouache
       in role: FG|BG => rl, oklch: [0..1, 0.., Numeric] => lch   then @role = rl; @oklch = lch
       in role: FG|BG => rl, gray: 0..23 => gray                  then @role = rl; @_256 = 232 + gray
       in role: FG|BG => rl, cube: [IC => r, IC => g, IC => b]    then @role = rl; @_256 = 16 + 36*r + 6*g + b
-      in __merge: [rl, sgr, _256, rgb, oklch]                    then @role, @sgr_basic, @_256, @rgb, @oklch = rl, sgr, _256, rgb, oklch
+      in __private: [rl, sgr, _256, rgb, oklch]                  then @role, @sgr_basic, @_256, @rgb, @oklch = rl, sgr, _256, rgb, oklch
       else raise ArgumentError, kva.inspect
       end
       raise ArgumentError, kva.inspect unless @role in 38 | 48 | nil
@@ -104,12 +104,18 @@ class Gouache
       end
     end
 
+    def change_role(new_role)
+      return self unless new_role != role
+      sgr_basic = @sgr_basic + { FG => -10, BG => 10 }[new_role] if @sgr_basic
+      Color.new __private: [new_role, sgr_basic, @_256, @rgb, @oklch]
+    end
+
     def self.merge(*colors) = colors.group_by(&:role).transform_values{|cs| cs.inject(&:merge) }.values_at(FG, BG)
 
     def merge(other)
       raise ArgumentError, "different roles" if role != other.role
       merge_vars = ->{ [@role, @sgr_basic, @_256, @rgb, @oklch] }
-      Color.new __merge: merge_vars[].zip(other.instance_exec(&merge_vars)).map{ _1 || _2 }
+      Color.new __private: merge_vars[].zip(other.instance_exec(&merge_vars)).map{ _1 || _2 }
     end
 
     def to_i = sgr.to_i

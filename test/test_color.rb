@@ -694,4 +694,73 @@ class TestColor < Minitest::Test
       bg_color.merge(fg_color1)
     end
   end
+
+  def test_change_role_method
+    # Test changing foreground to background for basic SGR colors
+    fg_red = Gouache::Color.sgr(31)  # foreground red
+    bg_red = fg_red.change_role(48)  # change to background
+
+    assert_equal 48, bg_red.role
+    assert_equal 41, bg_red.basic  # 31 + 10 = 41
+    assert_equal bg_red, Gouache::Color.sgr(41)
+
+    # Test changing background to foreground
+    bg_green = Gouache::Color.sgr(42)  # background green
+    fg_green = bg_green.change_role(38)  # change to foreground
+
+    assert_equal 38, fg_green.role
+    assert_equal 32, fg_green.basic  # 42 - 10 = 32
+    assert_equal fg_green, Gouache::Color.sgr(32)
+
+    # Test with bright colors
+    bright_fg = Gouache::Color.sgr(91)  # bright red foreground
+    bright_bg = bright_fg.change_role(48)  # change to background
+
+    assert_equal 48, bright_bg.role
+    assert_equal 101, bright_bg.basic  # 91 + 10 = 101
+    assert_equal bright_bg, Gouache::Color.sgr(101)
+
+    # Test no change when role is same
+    original = Gouache::Color.sgr(31)
+    unchanged = original.change_role(38)  # already foreground
+
+    assert_same original, unchanged
+
+    # Test with non-basic colors (RGB) - should preserve other attributes
+    rgb_color = Gouache::Color.rgb(255, 128, 64)  # foreground
+    bg_rgb_color = rgb_color.change_role(48)  # change to background
+
+    assert_equal 48, bg_rgb_color.role
+    assert_equal [255, 128, 64], bg_rgb_color.rgb
+    assert_nil bg_rgb_color.instance_variable_get(:@sgr_basic)  # no basic SGR for RGB colors
+
+    # Test with 256-color
+    color_256 = Gouache::Color.sgr("38;5;196")  # 256-color foreground
+    bg_256 = color_256.change_role(48)  # change to background
+
+    assert_equal 48, bg_256.role
+    assert_equal 196, bg_256._256
+    assert_nil bg_256.instance_variable_get(:@sgr_basic)  # no basic SGR for 256-colors
+
+    # Test with merged colors - merge different color representations
+    fg_rgb = Gouache::Color.rgb(255, 0, 0)    # RGB red
+    fg_cube = Gouache::Color.cube(5, 0, 0)    # cube red (same as RGB)
+    merged_fg = fg_rgb.merge(fg_cube)         # merged foreground color
+
+    bg_merged = merged_fg.change_role(48)     # change to background
+    assert_equal 48, bg_merged.role
+    assert_equal [255, 0, 0], bg_merged.rgb  # preserves RGB
+    assert_equal 196, bg_merged._256          # preserves cube _256
+
+    # Test another merged color combination
+    fg_basic = Gouache::Color.sgr(31)         # basic red
+    fg_256 = Gouache::Color.sgr("38;5;196")   # 256-color red
+    merged_complex = fg_basic.merge(fg_256)
+
+    bg_complex = merged_complex.change_role(48)
+    assert_equal 48, bg_complex.role
+    assert_equal 41, bg_complex.basic        # basic red background
+    assert_equal 196, bg_complex._256         # preserves 256-color
+  end
+
 end

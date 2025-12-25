@@ -649,5 +649,52 @@ class TestLayer < Minitest::Test
     assert_raises(TypeError) { layer.overlay([1, 2, 3]) }
   end
 
+  def test_layer_prepare_sgr_color_transformation
+    # Test that Color objects get transformed to SGR strings
+    color = Gouache::Color.rgb(255, 0, 0)
+    result = Gouache::Layer.prepare_sgr([color])
+    assert_equal ["38;2;255;0;0"], result
+  end
+
+  def test_layer_prepare_sgr_color_transformation_with_fallback
+    # Test Color transformation with fallback option
+    color = Gouache::Color.rgb(255, 0, 0)
+
+    # Without fallback
+    result = Gouache::Layer.prepare_sgr([color])
+    assert_equal ["38;2;255;0;0"], result
+
+    # With fallback
+    result = Gouache::Layer.prepare_sgr([color], fallback: :basic)
+    assert_equal [91], result
+  end
+
+  def test_layer_prepare_sgr_mixed_color_and_sgr
+    # Test mix of Color objects and SGR codes
+    color = Gouache::Color.rgb(255, 0, 0)
+    result = Gouache::Layer.prepare_sgr([1, color, 4])
+    assert_equal [1, "38;2;255;0;0", 4], result
+  end
+
+  def test_layer_from_accepts_color_objects
+    # Test that Layer.from accepts Color objects directly
+    color = Gouache::Color.rgb(255, 0, 0)
+    layer = Gouache::Layer.from([color])
+    assert_equal color, layer[@fg_pos]
+  end
+
+  def test_layer_to_sgr_with_color_fallback
+    # Test that to_sgr passes fallback to prepare_sgr
+    color = Gouache::Color.rgb(255, 0, 0)
+    layer = Gouache::Layer.from([color])
+
+    # Default behavior
+    assert_equal "38;2;255;0;0", layer.to_sgr
+
+    # With fallback
+    result = layer.to_sgr(fallback: :basic)
+    assert_equal "91", result
+  end
+
 
 end

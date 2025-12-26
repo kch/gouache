@@ -601,8 +601,22 @@ class TestBuilder < Minitest::Test
   end
 
   def test_bracket_method_without_block_still_works
-    # Ensure [] without block still works (compilation mode)
+    # [] without block should still work normally
     result = @gouache[:red, "no_block"]
     assert_equal "\e[31mno_block\e[0m", result
+  end
+
+  def test_call_with_multi_parameter_block_raises_error
+    # Blocks with more than 1 parameter should raise ArgumentError
+    assert_raises(ArgumentError) do
+      @gouache.call { |a, b| red("test") }
+    end
+  end
+
+  def test_call_with_three_parameter_block_raises_error
+    # Blocks with 3 parameters should also raise ArgumentError
+    assert_raises(ArgumentError) do
+      @gouache.call { |x, y, z| bold("test") }
+    end
   end
 end

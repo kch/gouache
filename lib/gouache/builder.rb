@@ -130,7 +130,7 @@ class Gouache
         in nil
         in 1 then builder[self]
         in 0 then instance_exec(&builder)
-        in _ then raise ::ArgumentError
+        in _ then ::Kernel.raise ::ArgumentError
         end
         @nesting -= 1
         ::Kernel.raise UnfinishedChain, @chain if @chain

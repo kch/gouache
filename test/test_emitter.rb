@@ -991,4 +991,41 @@ class TestEmitter < Minitest::Test
     result = emitter.emit!
     assert_equal "", result
   end
+
+  def test_base_style_applies_to_all_text
+    # _base style should apply to all text content
+    result = Gouache.new(_base: 32) { self << "prefix"; foo("content") }
+    assert_equal "\e[32mprefixcontent\e[0m", result
+  end
+
+  def test_no_base_style_plain_text
+    # Without _base style, should produce plain text
+    result = Gouache.new { self << "plain"; foo("text") }
+    assert_equal "plaintext", result
+  end
+
+  def test_base_style_with_other_colors
+    # _base style should work with other color tags
+    result = Gouache.new(_base: 32) { self << "green"; blue("blue") }
+    assert_equal "\e[32mgreen\e[34mblue\e[0m", result
+  end
+
+  def test_base_style_emitter_methods
+    # Test _base style using direct emitter operations
+    gouache = Gouache.new(_base: 31)
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "plain text"
+    emitter.open_tag(:bold)
+    emitter << "bold text"
+    emitter.close_tag
+    emitter << "more plain"
+    result = emitter.emit!
+    assert_equal "\e[31mplain text\e[22;1mbold text\e[22mmore plain\e[0m", result
+  end
+
+  def test_base_style_with_nested_tags
+    # _base style should interact properly with nested styling
+    result = Gouache.new(_base: 35) { self << "start"; bold { self << "middle"; italic("end") } }
+    assert_equal "\e[35mstart\e[22;1mmiddle\e[3mend\e[0m", result
+  end
 end

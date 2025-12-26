@@ -14,6 +14,7 @@ class Gouache
       @queue   = []             # accumulate sgr params to emit until we have text to style (we collapse to minimal set then)
       @got_sgr = false          # did we emit sgr at all? used to determine if reset in the end
       @out     = +""
+      enqueue @layers.diffpush @rules[:_base] if @rules.tag? :_base # special rule _base applies to all
     end
 
     def enqueue(sgr)       = (@queue << sgr; self)

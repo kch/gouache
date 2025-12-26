@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby -w
 # frozen_string_literal: true
+require "pathname"
 
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 $LOAD_PATH.unshift File.expand_path("../test", __dir__)
@@ -29,16 +30,24 @@ Minitest::Reporters.use!(
 
     def record(r)
       return unless r.failure
-      file = r.source_location&.first
-      name = r.name
-      @fails[file] << name
+      file, lno = r.source_location
+      file = Pathname.new(file).relative_path_from Dir.pwd
+      method = r.name
+      @fails[file] << [method, lno]
     end
 
     def report
-      @fails.map do |f,fns|
-        n = File.basename f, ".rb"
+      @fails.map do |f,mls|
+        n = f
         puts n
-        puts fns.map{ "  - " + it.sub(/^test_/, '').gsub(?_, ' ') }
+        ms = mls.map do |m,n|
+          m = m.sub(/^test_/, '').gsub(?_, ' ')
+          fn = "#{f}:#{n}"
+          [m, fn]
+        end
+        d = ms.map{ it.last.size }.max
+        # d = 50
+        puts ms.map{|m,fn| "  - [ %-#{d}s ]  %s" % [fn, m] }
         n
       end.each do |n|
         puts "bin/test #{n}"

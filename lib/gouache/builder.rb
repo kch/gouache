@@ -9,23 +9,7 @@ class Gouache
 
     using Wrap
 
-    def self._compile node, emitter:
-      return unless node&.any?                       # stop recursing
-      first, *rest = *node.slice_before(Symbol)      # each symbol marks a new tag/node
-      tag, *first = first if first in [Symbol, *]    # node may begin with tag or not
-      rest = rest.reverse_each.inject{|b,a| a << b } # nest symbol chains [:a,:b,:c] -> [:a,[:b,[:c]]]
-      emitter.open_tag tag if tag
-      first.each{ emit_content(it, emitter:) }
-      _compile(rest, emitter:)
-      emitter.close_tag if tag
-      nil
-    end
-
-    def self.compile root, instance:
-      emitter = instance.mk_emitter
-      _compile(root, emitter:)
-      emitter.emit!
-    end
+    ### helpers
 
     def self.safe_emit_sgr s, emitter:
       unless s.has_sgr?
@@ -64,10 +48,31 @@ class Gouache
       end
     end
 
+    ### compile
+
+    def self._compile node, emitter:
+      return unless node&.any?                       # stop recursing
+      first, *rest = *node.slice_before(Symbol)      # each symbol marks a new tag/node
+      tag, *first = first if first in [Symbol, *]    # node may begin with tag or not
+      rest = rest.reverse_each.inject{|b,a| a << b } # nest symbol chains [:a,:b,:c] -> [:a,[:b,[:c]]]
+      emitter.open_tag tag if tag
+      first.each{ emit_content(it, emitter:) }
+      _compile(rest, emitter:)
+      emitter.close_tag if tag
+      nil
+    end
+
+    def self.compile root, instance:
+      emitter = instance.mk_emitter
+      _compile(root, emitter:)
+      emitter.emit!
+    end
+
+    ### block/chains
+
     class UnfinishedChain < RuntimeError
       def initialize(chain) = super "call chain #{chain.instance_exec{@tags}*?.} left dangling with no arguments"
     end
-
 
     class ChainProxy < BasicObject
       def initialize parent, tag

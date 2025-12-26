@@ -51,13 +51,17 @@ class Gouache
     ### compile
 
     def self._compile node, emitter:
-      return unless node&.any?                       # stop recursing
-      first, *rest = *node.slice_before(Symbol)      # each symbol marks a new tag/node
-      tag, *first = first if first in [Symbol, *]    # node may begin with tag or not
-      rest = rest.reverse_each.inject{|b,a| a << b } # nest symbol chains [:a,:b,:c] -> [:a,[:b,[:c]]]
+      return unless node&.any?                                   # stop recursing
+      first, *rest = *node.slice_before{ it in Symbol | Color }  # each symbol marks a new tag/node
+      head, *first = first if first in [Symbol | Color, *]       # node may begin with tag|color or not
+      rest  = rest.reverse_each.inject{|b,a| a << b }            # nest symbol chains [:a,:b,:c] -> [:a,[:b,[:c]]]
+      tag   = head if head in Symbol
+      color = head if head in Color
       emitter.open_tag tag if tag
+      emitter.begin_sgr.push_sgr color.to_s(fallback: true) if color
       first.each{ emit_content(it, emitter:) }
       _compile(rest, emitter:)
+      emitter.end_sgr if color
       emitter.close_tag if tag
       nil
     end

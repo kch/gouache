@@ -931,4 +931,64 @@ class TestEmitter < Minitest::Test
     result = emitter.emit!
     assert_equal "\e[31;42mtext\e[0m", result
   end
+
+  def test_disabled_gouache_open_tag_no_escapes
+    # When gouache is disabled, tags should not produce escape sequences
+    disabled_gouache = Gouache.new.disable
+    emitter = Gouache::Emitter.new(instance: disabled_gouache)
+    emitter.open_tag(:red)
+    emitter << "plain text"
+    result = emitter.emit!
+    assert_equal "plain text", result
+  end
+
+  def test_disabled_gouache_multiple_tags_no_escapes
+    # Multiple tags on disabled gouache should produce plain text
+    disabled_gouache = Gouache.new.disable
+    emitter = Gouache::Emitter.new(instance: disabled_gouache)
+    emitter.open_tag(:bold)
+    emitter.open_tag(:red)
+    emitter << "styled text"
+    emitter.close_tag
+    emitter.close_tag
+    result = emitter.emit!
+    assert_equal "styled text", result
+  end
+
+  def test_disabled_gouache_sgr_operations_no_escapes
+    # SGR operations on disabled gouache should not add escapes
+    disabled_gouache = Gouache.new.disable
+    emitter = Gouache::Emitter.new(instance: disabled_gouache)
+    emitter.push_sgr("31")
+    emitter << "colored text"
+    emitter.end_sgr
+    result = emitter.emit!
+    assert_equal "colored text", result
+  end
+
+  def test_disabled_gouache_complex_operations_no_escapes
+    # Complex mix of operations should produce plain text when disabled
+    disabled_gouache = Gouache.new.disable
+    emitter = Gouache::Emitter.new(instance: disabled_gouache)
+    emitter.open_tag(:bold)
+    emitter.push_sgr("32")
+    emitter << "complex "
+    emitter.open_tag(:underline)
+    emitter << "text"
+    emitter.close_tag
+    emitter.end_sgr
+    emitter.close_tag
+    result = emitter.emit!
+    assert_equal "complex text", result
+  end
+
+  def test_disabled_gouache_empty_operations_still_work
+    # Empty operations should still work normally when disabled
+    disabled_gouache = Gouache.new.disable
+    emitter = Gouache::Emitter.new(instance: disabled_gouache)
+    emitter.open_tag(:red)
+    emitter.close_tag
+    result = emitter.emit!
+    assert_equal "", result
+  end
 end

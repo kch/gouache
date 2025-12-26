@@ -383,4 +383,21 @@ class TestMain < Minitest::Test
     expected = "\e[22;31;1mcontent\e[0m"
     assert_equal expected, result
   end
+
+  def test_disabled_gouache_produces_plain_output
+    # When MAIN instance is disabled, class methods should produce plain text
+    Gouache.disable
+
+    result = Gouache.red("colored text")
+    assert_equal "colored text", result
+
+    result = Gouache[:bold, "bold text"]
+    assert_equal "bold text", result
+
+    result = Gouache[[:red, "red"], " and ", [:blue, "blue"]]
+    assert_equal "red and blue", result
+
+    # Restore original state
+    Gouache::MAIN.instance_variable_set(:@enabled, nil)
+  end
 end

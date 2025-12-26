@@ -287,4 +287,18 @@ class TestGouache < Minitest::Test
     assert go.rules.key?(:hash_blue)     # From hash
     assert go.rules.key?(:keyword_green) # From keyword
   end
+
+  def test_disabled_instance_produces_plain_output
+    # When instance is disabled, builder methods should produce plain text
+    go = Gouache.new.disable
+
+    result = go.red("colored text")
+    assert_equal "colored text", result
+
+    result = go[:bold, "bold text"]
+    assert_equal "bold text", result
+
+    result = go[[:red, "red"], " and ", [:blue, "blue"]]
+    assert_equal "red and blue", result
+  end
 end

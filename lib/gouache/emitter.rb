@@ -6,6 +6,7 @@ class Gouache
 
     def initialize(instance:)
       @rules   = instance.rules # stylesheet
+      @enabled = instance.enabled?
       @layers  = LayerStack.new # each tag or bare sgr emitted generates a layer
       @flushed = @layers.base   # keep layer state after each flush so next flush can diff against it
       @queue   = []             # accumulate sgr params to emit until we have text to style (we collapse to minimal set then)
@@ -41,6 +42,7 @@ class Gouache
     end
 
     private def flush
+      return self unless @enabled
       return self unless @queue.any?
       @flushed = Layer.from Layer.from(@queue).diff(@flushed)
       sgr = @flushed.to_sgr(fallback: true)

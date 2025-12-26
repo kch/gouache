@@ -63,7 +63,7 @@ class Gouache
 
     alias to_s emit!
 
-
+    # for debugging
     def pretty_print(pp)
       fmt_layer = ->l{ "   [ %s ] %s" % [l.map{ "%2s" % it.to_s }.join(" "), l.tag] }
       pp.group(1, "#<#{self.class}", ">") do

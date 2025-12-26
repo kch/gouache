@@ -431,7 +431,7 @@ class TestStylesheet < Minitest::Test
       w: ["blink", :underline, :l, "on#123"]
     }
 
-    ss = Gouache::Stylesheet.new(styles, base: nil)
+    ss = Gouache::Stylesheet::BASE.merge(styles)
 
     # All should resolve to layers
     styles.each_key do |key|
@@ -449,6 +449,10 @@ class TestStylesheet < Minitest::Test
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;123"), ss.layer_map[:n]        # 256(123)
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;1;2;3"), ss.layer_map[:o]      # on_rgb(1,2,3)
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;67"), ss.layer_map[:s]         # #123 = 1*36+2*6+3+16
+
+    # Test complex array combination: ["blink", :underline, :l, "on#123"]
+    # Expected: gray(23)=38;5;255 + on#123=48;5;67 + blink(5) + underline(4)
+    assert_equal "38;5;255;48;5;67;5;4", ss.layer_map[:w].to_sgr
   end
 
   def test_valid_sgr_with_empty_segments

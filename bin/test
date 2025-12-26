@@ -16,6 +16,33 @@ if (ARGV & %w[ -c --color ]).any?
   Minitest::Reporters.use! Minitest::Reporters::DefaultReporter.new(color: true)
 end
 
+# this reporter prints just the failed test file/methods, and cmd to run each file
+Minitest::Reporters.use!(
+  Class.new(Minitest::Reporters::BaseReporter) do
+    def start
+      @fails = Hash.new{|h, k| h[k] = [] }
+    end
+
+    def record(r)
+      return unless r.failure
+      file = r.source_location&.first
+      name = r.name
+      @fails[file] << name
+    end
+
+    def report
+      @fails.map do |f,fns|
+        n = File.basename f, ".rb"
+        puts n
+        puts fns.map{ "  - " + it.sub(/^test_/, '').gsub(?_, ' ') }
+        n
+      end.each do |n|
+        puts "bin/test #{n}"
+      end
+    end
+  end.new
+) if (ARGV & %w[ -l --list ]).any?
+
 
 require "minitest/autorun"
 

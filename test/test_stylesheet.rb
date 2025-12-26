@@ -309,26 +309,26 @@ class TestStylesheet < Minitest::Test
 
   def test_key_method
     # Should find existing selectors
-    assert @ss.key?(:red)
-    assert @ss.key?("red")
-    assert @ss.key?(:bold)
-    assert @ss.key?("bold")
+    assert @ss.tag?(:red)
+    assert @ss.tag?("red")
+    assert @ss.tag?(:bold)
+    assert @ss.tag?("bold")
 
     # Should not find non-existent selectors
-    refute @ss.key?(:nonexistent)
-    refute @ss.key?("nonexistent")
+    refute @ss.tag?(:nonexistent)
+    refute @ss.tag?("nonexistent")
 
     # Should convert to symbol
     ss = Gouache::Stylesheet.new({custom: 31}, base: nil)
-    assert ss.key?(:custom)
-    assert ss.key?("custom")
+    assert ss.tag?(:custom)
+    assert ss.tag?("custom")
   end
 
   def test_key_method_with_unconvertible_types
     # Should handle types that can't convert to symbol
-    assert_raises { @ss.key?(123) }
-    assert_raises { @ss.key?([]) }
-    assert_raises { @ss.key?({}) }
+    assert_raises { @ss.tag?(123) }
+    assert_raises { @ss.tag?([]) }
+    assert_raises { @ss.tag?({}) }
   end
 
   def test_square_bracket_method

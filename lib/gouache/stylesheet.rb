@@ -73,7 +73,7 @@ class Gouache
       @layer_map[sym]
     end
 
-    def key?(key) = @layer_map.key?(key.to_sym)
+    def tag?(key) = @layer_map.key?(key.to_sym)
     def [](tag)   = @layer_map[tag.to_sym]
 
     # for inspection purposes mainly

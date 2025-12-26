@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "color_utils"
 require_relative "term"
 require_relative "utils"

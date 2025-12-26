@@ -416,4 +416,277 @@ class TestIntegration < Minitest::Test
     assert_equal 48, bg.role
     assert_equal 58, ul.role
   end
+
+  # Complex pipeline integration tests
+  def test_complex_builder_chain_with_blocks
+    # Test complex chaining with nested blocks and mixed syntax
+    result = @go.red.bold { |x|
+      x.blue("nested blue ")
+      x << "plain red bold "
+      x.italic { |y|
+        y.green("green italic ")
+        y.underline("underlined green italic")
+      }
+    }
+
+    expected = "\e[22;34;1mnested blue " +
+               "\e[31mplain red bold " +
+               "\e[32;3mgreen italic " +
+               "\e[31;4munderlined green italic" +
+               "\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_mixed_bracket_and_builder_syntax
+    # Mix bracket syntax with builder methods
+    ul_color = @C.over_rgb(255, 165, 0)
+    result = @go.red { |x|
+      x["start "]
+      x[:blue, "bracket blue "]
+      x.italic("builder italic ")
+      x[ul_color, "orange underline"]
+    }
+
+    # Just verify it contains the expected elements
+    assert result.include?("start")
+    assert result.include?("bracket blue")
+    assert result.include?("builder italic")
+    assert result.include?("orange underline")
+    assert result.include?("58;2;255;165;0")  # underline color
+  end
+
+  def test_complex_array_nesting_with_variables
+    # Test complex array structures with variables
+    fg_style = @C.rgb(255, 100, 50)
+    bg_style = @C.on_rgb(50, 50, 200)
+    ul_style = @C.over_rgb(0, 255, 100)
+
+    nested_array = [:italic, "italic text ", [:strike, "struck italic"]]
+
+    result = @go[
+      "prefix ",
+      fg_style,
+      bg_style,
+      ul_style,
+      [:bold, "bold colored ", nested_array],
+      " suffix"
+    ]
+
+    expected = "prefix " +
+               "\e[22;38;2;255;100;50;48;2;50;50;200;58;2;0;255;100;1mbold colored " +
+               "\e[3mitalic text " +
+               "\e[9mstruck italic" +
+               "\e[22;23;29m suffix" +
+               "\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_call_method_variations
+    # Test different call method patterns
+    styles = {
+      highlight: [:bold, @C.rgb(255, 255, 0), @C.on_rgb(255, 0, 255)],
+      error: [:red, @C.over_rgb(255, 0, 0), :underline]
+    }
+    go = Gouache.new(styles: styles)
+
+    # Call with block only
+    result1 = go.() { |x|
+      x.highlight("highlighted ")
+      x.error("error text")
+    }
+
+    # Call with content and block
+    result2 = go.("prefix ") { |x|
+      x[:green, "green "]
+      x << "appended"
+    }
+
+    # Call method variation
+    result3 = go.() {
+      highlight("built ")
+      error("content")
+    }
+
+    # Verify key styling elements are present
+    assert result1.include?("highlighted")
+    assert result1.include?("error text")
+    assert result1.include?("38;2;255;255;0")  # yellow highlight
+    assert result1.include?("58;2;255;0;0")    # red underline
+
+    assert result2.include?("prefix")
+    assert result2.include?("green")
+    assert result2.include?("appended")
+
+    assert result3.include?("built")
+    assert result3.include?("content")
+    assert result3.include?("38;2;255;255;0")  # yellow highlight
+  end
+
+  def test_arity_detection_with_complex_styling
+    # Test arity detection with complex styling combinations
+    complex_styles = {
+      banner: [:bold, :yellow, @C.on_rgb(128, 0, 128), @C.over_rgb(255, 255, 255)],
+      code: [:dim, @C.rgb(200, 200, 200), @C.on_rgb(40, 40, 40)]
+    }
+    go = Gouache.new(styles: complex_styles)
+
+    # Arity 0 - no parameters
+    result_0 = go.banner {
+      code("function() { return 42; }")
+      self << " // JavaScript"
+    }
+
+    # Arity 1 - it parameter
+    result_1 = go.banner { |it|
+      it.code("def method\n  42\nend")
+      it << " # Ruby"
+    }
+
+    # Arity 2 - explicit x parameter
+    result_2 = go.banner { |x|
+      x.code("fn main() { println!(\"42\"); }")
+      x << " // Rust"
+    }
+
+    expected_0 = "\e[38;2;200;200;200;48;2;40;40;40;58;2;255;255;255;1;2mfunction() { return 42; }" +
+                 "\e[22;33;48;2;128;0;128;1m // JavaScript" +
+                 "\e[0m"
+
+    expected_1 = "\e[38;2;200;200;200;48;2;40;40;40;58;2;255;255;255;1;2mdef method\n  42\nend" +
+                 "\e[22;33;48;2;128;0;128;1m # Ruby" +
+                 "\e[0m"
+
+    expected_2 = "\e[38;2;200;200;200;48;2;40;40;40;58;2;255;255;255;1;2mfn main() { println!(\"42\"); }" +
+                 "\e[22;33;48;2;128;0;128;1m // Rust" +
+                 "\e[0m"
+
+    assert_equal expected_0, result_0
+    assert_equal expected_1, result_1
+    assert_equal expected_2, result_2
+  end
+
+  def test_custom_base_styles_with_complex_overrides
+    # Test custom base styles with complex declarations
+    custom_base = [:bold, @C.rgb(253, 204, 0), @C.on_rgb(83, 0, 0)]
+
+    go = Gouache.new(
+      _base: custom_base,
+      gold: [:italic, @C.rgb(255, 215, 0)],
+      silver: [@C.rgb(192, 192, 192), @C.over_rgb(128, 128, 128)]
+    )
+
+    result = go["default "] { |x|
+      x.gold("golden ") {
+        silver("silver overlay")
+      }
+    }
+
+    expected = "\e[22;38;2;253;204;0;48;2;83;0;0;1mdefault " +
+               "\e[38;2;255;215;0;3mgolden " +
+               "\e[38;2;192;192;192;58;2;128;128;128msilver overlay" +
+               "\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_deeply_nested_with_all_color_types
+    # Test deep nesting with all color representation types
+    styles = {
+      level1: [@C.sgr(31)],                          # basic SGR
+      level2: [@C.sgr("38;5;196")],                  # 256-color SGR
+      level3: [@C.rgb(0, 255, 128)],                 # RGB
+      level4: [@C.on_cube(2, 4, 1)],                 # 256-color cube background
+      level5: [@C.over_gray(18)],                    # grayscale underline
+      level6: [@C.oklch(0.6, 0.2, 270)]             # OKLCH
+    }
+    go = Gouache.new(styles: styles)
+
+    result = go.level1 { |l1|
+      l1["L1 "]
+      l1.level2 { |l2|
+        l2["L2 "]
+        l2.level3 { |l3|
+          l3["L3 "]
+          l3.level4 { |l4|
+            l4["L4 "]
+            l4.level5 { |l5|
+              l5["L5 "]
+              l5.level6("L6")
+            }
+          }
+        }
+      }
+    }
+
+    # This creates a deeply nested structure with incremental styling
+    assert result.start_with?("\e[31mL1 ")
+    assert result.include?("L6")
+    assert result.end_with?("\e[0m")
+    assert result.include?("\e[38;5;196m")  # level2 256-color
+    assert result.include?("\e[38;2;0;255;128m")  # level3 RGB
+    assert result.include?("58;5;250")  # level5 grayscale underline (232+18)
+  end
+
+  def test_real_world_terminal_ui_simulation
+    # Simulate a complex terminal UI with status bars, menus, etc
+    ui_styles = {
+      statusbar: [:bold, @C.rgb(255, 255, 255), @C.on_rgb(0, 120, 215)],
+      menu_item: [@C.rgb(220, 220, 220)],
+      menu_selected: [:bold, @C.rgb(255, 255, 255), @C.on_rgb(0, 95, 175)],
+      error_highlight: [:bold, @C.rgb(255, 255, 255), @C.on_rgb(196, 49, 75), @C.over_rgb(255, 0, 0)],
+      success_indicator: [@C.rgb(0, 200, 0), @C.over_rgb(0, 255, 0)],
+      warning_badge: [:italic, @C.rgb(255, 193, 7), @C.over_rgb(255, 152, 0)]
+    }
+    go = Gouache.new(styles: ui_styles)
+
+    # Simulate a status bar with multiple sections
+    status_result = go.statusbar { |status|
+      status["File: main.rb "]
+      status.success_indicator("✓ Saved ")
+      status.warning_badge("⚠ 3 warnings")
+    }
+
+    # Simulate a menu with selection
+    menu_result = go.() { |x|
+      x.menu_item("1. Open File")
+      x << "\n"
+      x.menu_selected("2. Save File")  # Currently selected
+      x << "\n"
+      x.menu_item("3. Exit")
+      x << "\n"
+      x.error_highlight("Error: Permission denied")
+    }
+
+    # Verify complex escape sequences are generated
+    assert status_result.include?("38;2;255;255;255")  # statusbar white text
+    assert status_result.include?("48;2;0;120;215")    # statusbar blue background
+    assert status_result.include?("38;2;0;200;0")      # success green text
+    assert status_result.include?("58;2;0;255;0")      # success green underline
+
+    assert menu_result.include?("38;2;220;220;220")    # menu_item gray
+    assert menu_result.include?("48;2;0;95;175")       # menu_selected blue background
+    assert menu_result.include?("58;2;255;0;0")        # error red underline
+  end
+
+  # Test using refinement with complex styling - requires separate class
+end
+
+class TestIntegrationWithRefinement < Minitest::Test
+  @@go = Gouache.new(
+    highlight: [:bold, Gouache::Color.rgb(255, 255, 0), Gouache::Color.on_rgb(255, 0, 255)],
+    code: [:dim, Gouache::Color.rgb(200, 200, 200), Gouache::Color.on_rgb(40, 40, 40)]
+  )
+  using @@go.refinement
+
+  def test_string_refinement_with_complex_styling
+    # Test that strings get styling methods via refinement
+    result = "hello".highlight + " world".code
+
+    # Should contain styling escape sequences
+    assert result.include?("hello")
+    assert result.include?(" world")
+    assert result.include?("38;2;255;255;0")  # yellow text
+    assert result.include?("48;2;255;0;255")  # magenta background
+    assert result.include?("38;2;200;200;200") # gray text
+    assert result.include?("48;2;40;40;40")    # dark background
+  end
 end

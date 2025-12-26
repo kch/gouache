@@ -36,9 +36,9 @@ class Gouache
     extend Forwardable
     def_delegators "::Gouache::MAIN", :enable, :disable, :reopen, :enabled?, :puts, :print
 
-    def [](*args, **styles, &b) = (styles.empty? ? MAIN : MAIN.dup(styles:))[*args, &b]
-
-    def method_missing(m, ...) = Builder::Proxy.for(MAIN, m, ...) || super
+    def method_missing(m, ...)   = Builder::Proxy.for(MAIN, m, ...) || super
+    def [](*args, **styles, &b)  = (styles.empty? ? MAIN : MAIN.dup(styles:))[*args, &b]
+    def new(*args, **kvargs, &b) = (go = super and block_given? ? go.(&b) : go)
   end
 
   def initialize(styles:{}, io:nil, enabled:nil, **kvstyles)

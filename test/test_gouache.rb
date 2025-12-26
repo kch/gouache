@@ -301,4 +301,76 @@ class TestGouache < Minitest::Test
     result = go[[:red, "red"], " and ", [:blue, "blue"]]
     assert_equal "red and blue", result
   end
+
+  def test_class_new_passes_args_to_initialize
+    # Class new method should pass all arguments to initialize
+    require 'stringio'
+    custom_io = StringIO.new
+
+    go = Gouache.new(
+      styles: {test_style: 31},
+      io: custom_io,
+      enabled: true,
+      keyword_style: 32
+    )
+
+    # Verify all args were passed correctly
+    assert_equal custom_io, go.io
+    assert_equal true, go.enabled?
+    assert go.rules.key?(:test_style)
+    assert go.rules.key?(:keyword_style)
+  end
+
+  def test_class_new_with_block_calls_block
+    # Class new method should call block and return formatted string
+    called = false
+
+    result = Gouache.new do
+      called = true
+      red("test")
+    end
+
+    assert called, "Block should have been called"
+    assert_instance_of String, result, "Block result should be returned"
+    assert result.include?("test"), "Result should contain test text"
+  end
+
+  def test_class_new_with_args_and_block
+    # Class new should pass args to initialize AND call block
+    require 'stringio'
+    custom_io = StringIO.new
+    called = false
+
+    result = Gouache.new(io: custom_io, enabled: false, test_style: 99) do
+      called = true
+      test_style("styled text")
+    end
+
+    # Block should be called and return string
+    assert called, "Block should have been called"
+    assert_instance_of String, result, "Should return block result"
+    assert result.include?("styled text"), "Result should contain styled text"
+  end
+
+  def test_class_new_without_block_returns_instance
+    # Class new without block should just return the instance
+    go = Gouache.new(test_style: 42)
+
+    assert_instance_of Gouache, go
+    assert go.rules.key?(:test_style)
+  end
+
+  def test_class_new_with_block_custom_styles_enabled
+    # Class new with custom styles and block should use the styles when enabled
+    result = Gouache.new(styles: {z: 1}) { it.z("foo") }
+    assert_instance_of String, result
+    assert_equal "\e[22;1mfoo\e[0m", result
+  end
+
+  def test_class_new_with_block_custom_styles_disabled
+    # Class new with custom styles and block should produce plain text when disabled
+    result = Gouache.new(styles: {z: 1}, enabled: false) { it.z("foo") }
+    assert_instance_of String, result
+    assert_equal "foo", result
+  end
 end

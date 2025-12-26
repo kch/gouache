@@ -105,4 +105,103 @@ class TestWrap < Minitest::Test
     expected = "#{Gouache::WRAP_OPEN}#{text}#{Gouache::WRAP_CLOSE}"
     assert_equal expected, result
   end
+
+  def test_gouache_wrap_class_method
+    # Gouache.wrap should work without refinement
+    text = "content \e[31mred\e[39m text"
+    result = Gouache.wrap(text)
+    expected = "#{Gouache::WRAP_OPEN}#{text}#{Gouache::WRAP_CLOSE}"
+    assert_equal expected, result
+  end
+
+  def test_gouache_wrap_plain_text
+    # Gouache.wrap should not wrap plain text
+    text = "plain content"
+    result = Gouache.wrap(text)
+    assert_equal text, result
+  end
+
+  def test_gouache_instance_wrap
+    # Gouache instance .wrap method
+    go = Gouache.new
+    text = "content \e[31mred\e[39m text"
+    result = go.wrap(text)
+    expected = "#{Gouache::WRAP_OPEN}#{text}#{Gouache::WRAP_CLOSE}"
+    assert_equal expected, result
+  end
+
+  def test_nested_sgr_wrap_vs_no_wrap_comparison
+    # Compare wrap vs no-wrap behavior in single test to verify wrap solves the problem
+    go = Gouache.new
+
+    # WITHOUT wrap: nested interpolation breaks SGR sequences
+    inner_no_wrap = go.green("green")
+    outer_no_wrap = go.blue.bold("blue #{inner_no_wrap} bold")
+    result_no_wrap = go.red("xx #{outer_no_wrap} xx")
+
+    # WITH wrap: nested styling preserved with markers
+    inner_with_wrap = Gouache.wrap(go.green("green"))
+    outer_with_wrap = Gouache.wrap(go.blue.bold("blue #{inner_with_wrap} bold"))
+    result_with_wrap = "xx #{outer_with_wrap} xx"
+
+    # Key difference: wrap should preserve nested color structure
+    # No wrap: green resets kill outer blue bold styling
+    assert result_no_wrap.include?("\e[32mgreen\e[22;39m")  # green followed by reset to default
+
+    # With wrap: markers preserve styling boundaries
+    assert result_with_wrap.include?(Gouache::WRAP_OPEN)
+    assert result_with_wrap.include?(Gouache::WRAP_CLOSE)
+    assert result_with_wrap.include?("\e[32mgreen")
+
+    # Verify wrap maintains color context better than no-wrap
+    refute_equal result_no_wrap, result_with_wrap
+  end
+
+  def test_nested_sgr_with_wrap_and_repaint_clean_output
+    # Reproduce user example: repaint removes markers and fixes SGR
+    go = Gouache.new
+
+    # With wrap then repaint: clean final output
+    inner_wrapped = Gouache.wrap(go.green("green"))
+    outer_wrapped = Gouache.wrap(go.blue.bold("blue #{inner_wrapped} bold"))
+    wrapped_result = "xx #{outer_wrapped} xx"
+    final_result = go.repaint(wrapped_result)
+
+    expected_clean = "xx \e[22;34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    assert_equal expected_clean, final_result
+
+    # Should not contain wrap markers
+    refute final_result.include?(Gouache::WRAP_OPEN)
+    refute final_result.include?(Gouache::WRAP_CLOSE)
+  end
+
+  def test_wrap_manual_vs_gouache_builder_equivalence
+    # Compare manual SGR string vs Gouache builder - should produce identical results after repaint
+    go = Gouache.new
+
+    # Manual SGR string approach with wrap
+    manual_inner = "\e[32mgreen\e[39m"
+    wrapped_manual_inner = Gouache.wrap(manual_inner)
+    manual_outer = "\e[34;1mblue #{wrapped_manual_inner} bold\e[22;39m"
+    wrapped_manual_outer = Gouache.wrap(manual_outer)
+    manual_wrapped = "xx #{wrapped_manual_outer} xx"
+
+    # Gouache builder approach that should match
+    builder_inner = go[:green, "green"]
+    wrapped_builder_inner = Gouache.wrap(builder_inner)
+    builder_outer = go[:blue, :bold, "blue #{wrapped_builder_inner} bold"]
+    wrapped_builder_outer = Gouache.wrap(builder_outer)
+    builder_wrapped = "xx #{wrapped_builder_outer} xx"
+
+    # Repaint both to clear wrap markers
+    manual_result = go.repaint(manual_wrapped)
+    builder_result = go.repaint(builder_wrapped)
+
+    # After repaint, both approaches should produce identical clean output
+    assert_equal manual_result, builder_result
+
+    # Both should not contain wrap markers after repaint
+    refute manual_result.include?(Gouache::WRAP_OPEN)
+    refute builder_result.include?(Gouache::WRAP_OPEN)
+  end
 end

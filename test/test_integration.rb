@@ -668,6 +668,269 @@ class TestIntegration < Minitest::Test
   end
 
   # Test using refinement with complex styling - requires separate class
+
+  def test_wrap_integration_core_problem_demonstration
+    # Demonstrate the core wrap problem: nested string interpolation breaks SGR without wrap
+
+    # Create nested styled strings using manual SGR (simulating refinement output)
+    green_styled = "\e[32mgreen\e[39m"
+    blue_bold_styled = "\e[34;1mblue #{green_styled} bold\e[22;39m"
+    result_without_wrap = "\e[31mxx #{blue_bold_styled} xx\e[0m"
+
+    # Without wrap: green's \e[39m reset kills blue bold context
+    expected_broken = "\e[31mxx \e[34;1mblue \e[32mgreen\e[39m bold\e[22;39m xx\e[0m"
+    assert_equal expected_broken, result_without_wrap
+  end
+
+  def test_wrap_integration_solution_with_markers
+    # Show how wrap markers preserve nested SGR structure
+
+    # Same content as problem demo but with wrap markers
+    green_styled = "\e[32mgreen\e[39m"
+    wrapped_green = "#{Gouache::WRAP_OPEN}#{green_styled}#{Gouache::WRAP_CLOSE}"
+    blue_bold_styled = "\e[34;1mblue #{wrapped_green} bold\e[22;39m"
+    wrapped_blue_bold = "#{Gouache::WRAP_OPEN}#{blue_bold_styled}#{Gouache::WRAP_CLOSE}"
+    result_with_wrap = "xx #{wrapped_blue_bold} xx"
+
+    # With wrap: markers preserve styling boundaries (ugly but functional)
+    expected_wrapped = "xx #{Gouache::WRAP_OPEN}\e[34;1mblue " +
+                       "#{Gouache::WRAP_OPEN}\e[32mgreen\e[39m#{Gouache::WRAP_CLOSE} " +
+                       "bold\e[22;39m#{Gouache::WRAP_CLOSE} xx"
+    assert_equal expected_wrapped, result_with_wrap
+  end
+
+  def test_wrap_integration_repaint_final_cleanup
+    # Show how repaint removes markers and produces clean final output
+    go = Gouache.new
+
+    # Start with wrapped content from previous test
+    green_styled = "\e[32mgreen\e[39m"
+    wrapped_green = "#{Gouache::WRAP_OPEN}#{green_styled}#{Gouache::WRAP_CLOSE}"
+    blue_bold_styled = "\e[34;1mblue #{wrapped_green} bold\e[22;39m"
+    wrapped_blue_bold = "#{Gouache::WRAP_OPEN}#{blue_bold_styled}#{Gouache::WRAP_CLOSE}"
+    wrapped_string = "xx #{wrapped_blue_bold} xx"
+
+    # Repaint removes markers and fixes SGR sequences
+    clean_result = go.repaint(wrapped_string)
+    expected_clean = "xx \e[22;34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    assert_equal expected_clean, clean_result
+  end
+
+  def test_wrap_integration_performance_complex_nesting
+    # Test performance with deeply nested wrapped content
+    go = Gouache.new
+
+    start_time = Time.now
+
+    # Build deeply nested structure
+    content = "base"
+    10.times do |i|
+      color_method = [:red, :green, :blue, :yellow, :magenta, :cyan][i % 6]
+      content = Gouache.wrap(go.send(color_method, "level#{i} #{content}"))
+    end
+
+    # Final repaint
+    result = go.repaint("final #{content}")
+
+    duration = Time.now - start_time
+
+    # Should complete quickly even with deep nesting
+    assert_operator duration, :<, 0.1, "Deep nesting took too long: #{duration}s"
+
+    # Should contain nested content with proper final reset
+    assert result.include?("level0")
+    assert result.include?("level9")
+    assert result.include?("base")
+    assert result.end_with?("\e[0m")
+  end
+
+  def test_wrap_integration_mixed_gouache_methods
+    # Test mixing Gouache.wrap class method with instance methods
+    go = Gouache.new
+
+    # Use class method for some wrapping
+    class_wrapped = Gouache.wrap("\e[31mclass wrapped\e[39m")
+
+    # Use instance method for other operations
+    instance_styled = go.blue("instance styled #{class_wrapped}")
+
+    # Use go.wrap for final wrapping
+    final_wrapped = go.wrap(instance_styled)
+
+    # Repaint should handle mixed approach
+    result = go.repaint(final_wrapped)
+
+    assert result.include?("class wrapped")
+    assert result.include?("instance styled")
+    assert result.include?("\e[34m")  # blue
+    assert result.include?("\e[31m")  # red
+    assert result.end_with?("\e[0m")
+  end
+
+  def test_wrap_integration_realistic_terminal_output
+    # Test realistic scenario: building complex terminal output with nesting
+    go = Gouache.new
+
+    # Simulate building a status line with nested components
+    timestamp = Gouache.wrap(go.dim("2024-01-15 10:30:45"))
+    level = Gouache.wrap(go.red.bold("ERROR"))
+    component = Gouache.wrap(go.cyan("AuthService"))
+    message = go.white("Failed to authenticate user #{Gouache.wrap(go.yellow("john.doe"))}")
+
+    # Build final log line
+    log_line = "[#{timestamp}] #{level} #{component}: #{message}"
+    final_output = go.repaint(log_line)
+
+    expected = "[\e[22;2m2024-01-15 10:30:45\e[22m] " +
+               "\e[22;31;1mERROR\e[22;39m " +
+               "\e[36mAuthService\e[39m: " +
+               "\e[37mFailed to authenticate user \e[33mjohn.doe\e[0m"
+    assert_equal expected, final_output
+  end
+
+  def test_wrap_integration_nested_interpolation
+    # Test the exact scenario from user example showing wrap benefits
+    go = Gouache.new
+
+    # Without wrap - broken nested styling
+    green_text = "green"
+    blue_bold_text = "blue #{"\e[32m#{green_text}\e[39m"} bold"
+    red_result = "\e[31mxx \e[22;34;1m#{blue_bold_text}\e[22m xx\e[0m"
+
+    expected_broken = "\e[31mxx \e[22;34;1mblue \e[32mgreen\e[39m bold\e[22m xx\e[0m"
+    assert_equal expected_broken, red_result
+
+    # With wrap - preserved styling
+    wrapped_green = Gouache.wrap("\e[32m#{green_text}\e[39m")
+    wrapped_blue_bold = Gouache.wrap("\e[34;1mblue #{wrapped_green} bold\e[22m")
+    wrapped_result = "xx #{wrapped_blue_bold} xx"
+
+    expected_wrapped = "xx #{Gouache::WRAP_OPEN}\e[34;1mblue " +
+                       "#{Gouache::WRAP_OPEN}\e[32mgreen\e[39m#{Gouache::WRAP_CLOSE} " +
+                       "bold\e[22m#{Gouache::WRAP_CLOSE} xx"
+    assert_equal expected_wrapped, wrapped_result
+
+    # With repaint - clean final output
+    repainted = go.repaint(wrapped_result)
+    expected_repainted = "xx \e[22;34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    assert_equal expected_repainted, repainted
+  end
+
+  def test_wrap_integration_performance_with_gouache_methods
+    # Test both Gouache.wrap and instance.wrap performance
+    go = Gouache.new
+    large_styled_content = 1000.times.map { |i| "\e[#{31 + (i % 7)}m#{i}\e[39m" }.join(" ")
+
+    start_time = Time.now
+
+    # Test class method
+    class_result = Gouache.wrap(large_styled_content)
+
+    # Test instance method
+    instance_result = go.wrap(large_styled_content)
+
+    end_time = Time.now
+    duration = end_time - start_time
+
+    # Should complete quickly
+    assert_operator duration, :<, 0.1, "Large wrap operations took too long: #{duration}s"
+
+    # Both methods should produce same result
+    assert_equal class_result, instance_result
+
+    # Should be wrapped
+    assert class_result.start_with?(Gouache::WRAP_OPEN)
+    assert class_result.end_with?(Gouache::WRAP_CLOSE)
+  end
+
+  def test_wrap_integration_complex_nesting_levels
+    # Test deeply nested wrap scenarios
+    go = Gouache.new
+
+    # Build up nested wrapped content
+    level1 = Gouache.wrap("\e[31mlevel1\e[39m")
+    level2 = Gouache.wrap("\e[32mlevel2 #{level1} end2\e[39m")
+    level3 = Gouache.wrap("\e[33mlevel3 #{level2} end3\e[39m")
+    level4 = Gouache.wrap("\e[34mlevel4 #{level3} end4\e[39m")
+
+    # Should contain multiple nested wrap markers
+    wrap_count = level4.scan(Gouache::WRAP_OPEN).length
+    assert_equal 4, wrap_count
+
+    # Repaint should handle all levels correctly
+    repainted = go.repaint(level4)
+    assert repainted.start_with?("\e[34mlevel4")
+    assert repainted.include?("level1")
+    assert repainted.end_with?("end4\e[0m")
+
+    # Should not contain wrap markers after repaint
+    assert !repainted.include?(Gouache::WRAP_OPEN)
+    assert !repainted.include?(Gouache::WRAP_CLOSE)
+  end
+
+  def test_wrap_integration_mixed_wrapped_unwrapped
+    # Test content mixing wrapped and unwrapped sections
+    go = Gouache.new
+
+    wrapped_section = Gouache.wrap("\e[31mwrapped red\e[39m")
+    unwrapped_section = "\e[32munwrapped green\e[39m"
+
+    mixed_content = "start #{wrapped_section} middle #{unwrapped_section} end"
+
+    # The mixed content should be wrappable as a whole if it has SGR
+    final_wrapped = Gouache.wrap(mixed_content)
+
+    assert final_wrapped.start_with?(Gouache::WRAP_OPEN)
+    assert final_wrapped.end_with?(Gouache::WRAP_CLOSE)
+    assert final_wrapped.include?(wrapped_section)  # Nested wrap preserved
+
+    # Repaint should handle both sections
+    repainted = go.repaint(final_wrapped)
+    assert repainted.include?("wrapped red")
+    assert repainted.include?("unwrapped green")
+    assert repainted.end_with?("\e[0m")
+  end
+
+  def test_wrap_integration_builder_with_wrap_methods
+    # Test using wrap with builder pattern
+    go = Gouache.new
+
+    result = go.red { |x|
+      # Use both wrapped and unwrapped content in builder
+      wrapped_part = Gouache.wrap("\e[34mblue section\e[39m")
+      x << "red start "
+      x << wrapped_part
+      x << " red end"
+    }
+
+    expected = "\e[31mred start \e[34mblue section\e[31m red end\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_wrap_integration_empty_and_edge_cases
+    # Test wrap with various edge cases
+    go = Gouache.new
+
+    # Empty string
+    assert_equal "", Gouache.wrap("")
+    assert_equal "", go.wrap("")
+
+    # Only SGR codes
+    sgr_only = "\e[31m\e[0m"
+    wrapped_sgr = Gouache.wrap(sgr_only)
+    expected_sgr = "#{Gouache::WRAP_OPEN}#{sgr_only}#{Gouache::WRAP_CLOSE}"
+    assert_equal expected_sgr, wrapped_sgr
+
+    # Already wrapped content
+    already_wrapped = "#{Gouache::WRAP_OPEN}\e[31mcontent\e[39m#{Gouache::WRAP_CLOSE}"
+    rewrapped = Gouache.wrap(already_wrapped)
+    assert_equal already_wrapped, rewrapped  # Should not double-wrap
+
+    # Plain text
+    plain = "no styling here"
+    wrapped_plain = Gouache.wrap(plain)
+    assert_equal plain, wrapped_plain  # Should not wrap plain text
+  end
 end
 
 class TestIntegrationWithRefinement < Minitest::Test
@@ -688,5 +951,27 @@ class TestIntegrationWithRefinement < Minitest::Test
     assert result.include?("48;2;255;0;255")  # magenta background
     assert result.include?("38;2;200;200;200") # gray text
     assert result.include?("48;2;40;40;40")    # dark background
+  end
+end
+
+class TestWrapIntegrationWithRefinement < Minitest::Test
+  @@go = Gouache.new
+  using @@go.refinement
+
+  def test_wrap_refinement_nested_string_methods
+    # Test the user example with string refinements and wrap
+    result_without_wrap = "xx #{"blue #{"green".green} bold".blue.bold} xx".red
+    expected_broken = "\e[31mxx \e[22;34;1mblue \e[32mgreen\e[39m bold\e[22m xx\e[0m"
+    assert_equal expected_broken, result_without_wrap
+
+    # With wrap - preserved styling with markers
+    result_with_wrap = "xx #{"blue #{"green".green.wrap} bold".blue.bold.wrap} xx"
+    assert result_with_wrap.include?(Gouache::WRAP_OPEN)
+    assert result_with_wrap.include?(Gouache::WRAP_CLOSE)
+
+    # With repaint - clean final output
+    final_result = result_with_wrap.repaint
+    expected_clean = "xx \e[22;34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    assert_equal expected_clean, final_result
   end
 end

@@ -1002,19 +1002,19 @@ class TestStylesheet < Minitest::Test
     # Test weirder numbers in RU_SGR_NC range - unknown codes become all-nil layers
     result = @ss.send(:compute_decl, 99)  # unknown SGR code
     assert_equal Gouache::Layer.from(99), result
-    assert_equal [nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil], result
+    assert_equal Array.new(Gouache::Layer::RANGES.length), result
 
     result = @ss.send(:compute_decl, 50)  # between basic ranges
     assert_equal Gouache::Layer.from(50), result
-    assert_equal [nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil], result
+    assert_equal Array.new(Gouache::Layer::RANGES.length), result
 
     result = @ss.send(:compute_decl, 89)  # just below bright fg range
     assert_equal Gouache::Layer.from(89), result
-    assert_equal [nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil], result
+    assert_equal Array.new(Gouache::Layer::RANGES.length), result
 
     result = @ss.send(:compute_decl, 98)  # just above bright fg range
     assert_equal Gouache::Layer.from(98), result
-    assert_equal [nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil], result
+    assert_equal Array.new(Gouache::Layer::RANGES.length), result
   end
 
   def test_compute_decl_rx_int_case
@@ -1314,9 +1314,9 @@ class TestStylesheet < Minitest::Test
     assert_equal [effect1, effect2], layer.effects
 
     # Check SGR codes are applied
-    assert_equal 1, layer[9]   # bold
-    assert_equal 4, layer[8]   # underline
-    assert_equal 3, layer[2]   # italic
+    assert_equal 1, layer[Gouache::Layer::RANGES[:bold].index]   # bold
+    assert_equal 4, layer[Gouache::Layer::RANGES[:underline].index]   # underline
+    assert_equal 3, layer[Gouache::Layer::RANGES[:italic].index]   # italic
 
     # Check colors - red and green fg merge with green as fallback for red
     fg_color = layer[0]

@@ -23,8 +23,8 @@ class TestEffects < Minitest::Test
 
   def test_effect_receives_correct_top_layer
     effect = proc do |top, under|
-      assert_equal 1, top.__layer[9]  # bold position
-      assert_equal 31, top.__layer[0] # fg red position
+      assert_equal 1, top.__layer[Gouache::Layer::RANGES[:bold].index]  # bold position
+      assert_equal 31, top.__layer[Gouache::Layer::RANGES[:fg].index] # fg red position
     end
 
     bold_red = Gouache::Layer.from(1, 31)
@@ -36,8 +36,8 @@ class TestEffects < Minitest::Test
 
   def test_effect_receives_correct_under_layer
     effect = proc do |top, under|
-      assert_equal 1, under.__layer[9]  # bold in under layer
-      assert_equal 31, under.__layer[0] # fg red in under layer
+      assert_equal 1, under.__layer[Gouache::Layer::RANGES[:bold].index]  # bold in under layer
+      assert_equal 31, under.__layer[Gouache::Layer::RANGES[:fg].index] # fg red in under layer
     end
 
     bold_red = Gouache::Layer.from(1, 31)
@@ -60,9 +60,9 @@ class TestEffects < Minitest::Test
     @stack.diffpush(effect_layer)
 
     top = @stack.top
-    assert_equal 3, top[2]   # italic position
-    assert_equal 32, top[0]  # fg position
-    assert_equal 1, top[9]   # bold still there
+    assert_equal 3, top[Gouache::Layer::RANGES[:italic].index]   # italic position
+    assert_equal 32, top[Gouache::Layer::RANGES[:fg].index]  # fg position
+    assert_equal 1, top[Gouache::Layer::RANGES[:bold].index]   # bold still there
   end
 
   def test_multiple_effects_called_in_order
@@ -138,12 +138,12 @@ class TestEffects < Minitest::Test
     @stack.diffpush(effect_layer)
 
     top = @stack.top
-    assert_equal 1, top[9]   # bold
-    assert_equal 23, top[2]  # italic off
-    assert_equal 4, top[8]   # underline (because under was bold)
+    assert_equal 1, top[Gouache::Layer::RANGES[:bold].index]   # bold
+    assert_equal 23, top[Gouache::Layer::RANGES[:italic].index]  # italic off
+    assert_equal 4, top[Gouache::Layer::RANGES[:underline].index]   # underline (because under was bold)
 
     # bg should be red (copied from under.fg)
-    bg_color = top[1]
+    bg_color = top[Gouache::Layer::RANGES[:bg].index]
     assert_instance_of Gouache::Color, bg_color
     assert_equal Gouache::Color::BG, bg_color.role
   end
@@ -172,10 +172,10 @@ class TestEffects < Minitest::Test
     @stack.diffpush(effect_layer)
 
     top = @stack.top
-    assert_equal 2, top[10]  # dim
-    assert_equal 23, top[2]  # italic off
-    assert_equal 24, top[8]  # underline off
-    assert_equal 32, top[0]  # fg green (copied)
+    assert_equal 2, top[Gouache::Layer::RANGES[:dim].index]  # dim
+    assert_equal 23, top[Gouache::Layer::RANGES[:italic].index]  # italic off
+    assert_equal 24, top[Gouache::Layer::RANGES[:underline].index]  # underline off
+    assert_equal 32, top[Gouache::Layer::RANGES[:fg].index]  # fg green (copied)
   end
 
   def test_full_pipeline_stylesheet_to_stack_with_effects
@@ -220,9 +220,9 @@ class TestEffects < Minitest::Test
     assert_equal [bold_effect, color_copy_effect, dim_effect], layer.effects
 
     # Layer should have SGR codes applied
-    assert_equal 32, layer[0]  # green fg
-    assert_equal 4, layer[8]   # underline
-    assert_equal 3, layer[2]   # italic
+    assert_equal 32, layer[Gouache::Layer::RANGES[:fg].index]  # green fg
+    assert_equal 4, layer[Gouache::Layer::RANGES[:underline].index]   # underline
+    assert_equal 3, layer[Gouache::Layer::RANGES[:italic].index]   # italic
   end
 
   def test_effects_actual_emitted_sequences
@@ -271,7 +271,7 @@ class TestEffects < Minitest::Test
     @stack.diffpush(layer)
 
     assert_equal 1, call_count
-    assert_equal 1, @stack.top[9]  # bold was set
+    assert_equal 1, @stack.top[Gouache::Layer::RANGES[:bold].index]  # bold should be set
   end
 
   def test_effect_valid_arity_two
@@ -283,7 +283,7 @@ class TestEffects < Minitest::Test
     @stack.diffpush(layer)
 
     assert_equal 1, call_count
-    assert_equal 3, @stack.top[2]  # italic was set
+    assert_equal 3, @stack.top[Gouache::Layer::RANGES[:italic].index]  # italic was set
   end
 
   def test_base_effects_dim_off

@@ -18,7 +18,7 @@ class TestLayer < Minitest::Test
 
   def test_layer_empty
     layer = Gouache::Layer.empty
-    assert_equal 11, layer.length
+    assert_equal Gouache::Layer::RANGES.length, layer.length
     assert layer.all?(&:nil?)
   end
 
@@ -325,18 +325,21 @@ class TestLayer < Minitest::Test
     base = Gouache::Layer::BASE
 
     # fg and bg positions should contain Color objects
-    assert_kind_of Gouache::Color, base[0]  # fg reset
-    assert_equal 39, base[0].basic
-    assert_equal 38, base[0].role
 
-    assert_kind_of Gouache::Color, base[1]  # bg reset
-    assert_equal 49, base[1].basic
-    assert_equal 48, base[1].role
 
+    assert_kind_of Gouache::Color, base[Gouache::Layer::RANGES[:fg].index]  # fg reset
+    assert_equal 39, base[Gouache::Layer::RANGES[:fg].index].basic
+    assert_equal 38, base[Gouache::Layer::RANGES[:fg].index].role
+
+    assert_kind_of Gouache::Color, base[Gouache::Layer::RANGES[:bg].index]  # bg reset
+    assert_equal 49, base[Gouache::Layer::RANGES[:bg].index].basic
+    assert_equal 48, base[Gouache::Layer::RANGES[:bg].index].role
+
+    assert_equal 22, base[Gouache::Layer::RANGES[:dim].index]
     # Other positions should contain integers
-    assert_equal 23, base[2]  # italic reset
-    assert_equal 22, base[9]  # bold reset
-    assert_equal 22, base[10] # dim reset (same as bold)
+    assert_equal 23, base[Gouache::Layer::RANGES[:italic].index]  # italic reset
+    assert_equal 22, base[Gouache::Layer::RANGES[:bold].index]  # bold reset
+    assert_equal 22, base[Gouache::Layer::RANGES[:dim].index] # dim reset (same as bold)
   end
 
   def test_base_layer_properties
@@ -740,9 +743,9 @@ class TestLayer < Minitest::Test
 
     layer = Gouache::Layer.from(1, effect1, 4, effect2, 31)
 
-    assert_equal 1, layer[9]   # bold range index
-    assert_equal 4, layer[8]            # underline
-    assert_equal 31, layer[0]           # fg red
+    assert_equal 1, layer[Gouache::Layer::RANGES[:bold].index]   # bold range index
+    assert_equal 4, layer[Gouache::Layer::RANGES[:underline].index]            # underline
+    assert_equal 31, layer[Gouache::Layer::RANGES[:fg].index]           # fg red
     assert_equal [effect1, effect2], layer.effects
   end
 
@@ -750,9 +753,9 @@ class TestLayer < Minitest::Test
     effect = proc { |top, under| "test" }
     layer = Gouache::Layer.from([1, effect, [4, 31]])
 
-    assert_equal 1, layer[9]    # bold
-    assert_equal 4, layer[8]    # underline
-    assert_equal 31, layer[0]   # fg red
+    assert_equal 1, layer[Gouache::Layer::RANGES[:bold].index]    # bold
+    assert_equal 4, layer[Gouache::Layer::RANGES[:underline].index]    # underline
+    assert_equal 31, layer[Gouache::Layer::RANGES[:fg].index]   # fg red
     assert_equal [effect], layer.effects
   end
 
@@ -769,9 +772,9 @@ class TestLayer < Minitest::Test
   def test_layer_from_with_no_effects
     layer = Gouache::Layer.from(1, 4, 31)
 
-    assert_equal 1, layer[9]    # bold
-    assert_equal 4, layer[8]    # underline
-    assert_equal 31, layer[0]   # fg red
+    assert_equal 1, layer[Gouache::Layer::RANGES[:bold].index]    # bold
+    assert_equal 4, layer[Gouache::Layer::RANGES[:underline].index]    # underline
+    assert_equal 31, layer[Gouache::Layer::RANGES[:fg].index]   # fg red
     assert_equal [], layer.effects
   end
 

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "gouache/version"
 require_relative "gouache/base"
 require_relative "gouache/layer"
 require_relative "gouache/layer_stack"

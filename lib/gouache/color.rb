@@ -111,7 +111,7 @@ class Gouache
       fallback = Term.color_level if fallback == true # allow passing the fallback level explicity or true to determine from Term
       case fallback
       in :truecolor then sgr
-      in :_256      then [role, 5, @_256 || _256]*?;
+      in :_256      then (!@_256 && @sgr_basic) || [role, 5, @_256 || _256]*?;
       in :basic     then basic
       end
     end

@@ -856,4 +856,37 @@ class TestColor < Minitest::Test
     assert_equal "42", color.to_s(fallback: :basic)
   end
 
+  def test_fallback_no_upconversion_basic_to_256
+    # Fallback should not upconvert basic colors to 256-color
+    basic_color = Gouache::Color.new(sgr: 42)  # basic green background
+
+    # Should stay as basic when requesting basic fallback
+    assert_equal 42, basic_color.to_sgr(fallback: :basic)
+
+    # Should not upconvert to 256-color when requesting 256 fallback
+    refute_equal "48;5;2", basic_color.to_sgr(fallback: :_256)
+  end
+
+  def test_fallback_no_upconversion_256_to_truecolor
+    # Fallback should not upconvert 256-color to truecolor
+    color_256 = Gouache::Color.new(sgr: "38;5;196")  # 256-color red
+
+    # Should stay as 256-color when requesting truecolor fallback
+    assert_equal "38;5;196", color_256.to_sgr(fallback: :truecolor)
+  end
+
+  def test_fallback_downconversion_only
+    # Fallback should only provide downward conversion paths
+    truecolor = Gouache::Color.new(sgr: "38;2;255;0;0")  # truecolor red
+
+    # Should downconvert to 256-color
+    result_256 = truecolor.to_s(fallback: :_256)
+    assert result_256.start_with?("38;5;"), "Should downconvert to 256-color format"
+
+    # Should downconvert to basic
+    result_basic = truecolor.to_s(fallback: :basic)
+    refute result_basic.include?(";"), "Basic fallback should not contain semicolons"
+  end
+
+
 end

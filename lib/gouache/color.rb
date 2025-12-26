@@ -116,6 +116,8 @@ class Gouache
       end
     end
 
+    def to_s(...) = to_sgr(...).to_s
+
     def change_role(new_role)
       return self unless new_role != role
       sgr_basic = @sgr_basic + { FG => -10, BG => 10 }[new_role] if @sgr_basic

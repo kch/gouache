@@ -817,4 +817,43 @@ class TestColor < Minitest::Test
     assert_equal 38, fg_color.to_i
   end
 
+  def test_to_s
+    # to_s should be string version of to_sgr
+    color = Gouache::Color.new(sgr: "38;2;255;128;64")
+    assert_equal color.to_sgr.to_s, color.to_s
+
+    # Test with fallback parameter
+    assert_equal color.to_sgr(fallback: :_256).to_s, color.to_s(fallback: :_256)
+    assert_equal color.to_sgr(fallback: :basic).to_s, color.to_s(fallback: :basic)
+  end
+
+  def test_to_s_simple_sgr_returns_string
+    # to_s should return string for simple SGR codes like 31
+    color = Gouache::Color.new(sgr: 31)
+    assert_equal "31", color.to_s
+  end
+
+  def test_to_s_simple_sgr_with_fallbacks
+    # to_s should return strings with all fallback variations
+    color = Gouache::Color.new(sgr: 42)
+
+    # No fallback
+    assert_equal "42", color.to_s
+
+    # fallback: false
+    assert_equal "42", color.to_s(fallback: false)
+
+    # fallback: true
+    assert_equal "42", color.to_s(fallback: true)
+
+    # fallback: :truecolor
+    assert_equal "42", color.to_s(fallback: :truecolor)
+
+    # fallback: :_256
+    assert_equal "42", color.to_s(fallback: :_256)
+
+    # fallback: :basic
+    assert_equal "42", color.to_s(fallback: :basic)
+  end
+
 end

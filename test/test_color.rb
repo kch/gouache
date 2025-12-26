@@ -915,6 +915,18 @@ class TestColor < Minitest::Test
     assert_equal Gouache::Color::BG, shifted_bg.role
   end
 
+  def test_fallback_sgr_rgb_merge_prefers_conversion_to_256
+    # Color with SGR and RGB but no 256 part should fallback to 256 by converting RGB, not using SGR
+    sgr_color = Gouache::Color.sgr(31)
+    rgb_color = Gouache::Color.rgb(1, 2, 3)
+    merged = sgr_color.merge(rgb_color)
+
+    # Should convert RGB to 256-color, not fall back to SGR basic
+    result = merged.to_s(fallback: :_256)
+    assert result.start_with?("38;5;"), "Should convert RGB to 256-color format, got: #{result}"
+    refute_equal "31", result, "Should not fall back to SGR basic"
+  end
+
   def test_rgb_shift_method
     color = Gouache::Color.rgb(100, 150, 200)
 

@@ -99,12 +99,13 @@ class TestEmitter < Minitest::Test
     assert_equal "", result
   end
 
-  def test_emit_freezes_output
+  def test_emit_returns_string
     result = @emitter.emit!
-    assert result.frozen?
+    refute result.frozen?
+    assert_instance_of String, result
   end
 
-  def test_emit_returns_frozen_if_already_frozen
+  def test_emit_returns_same_if_already_emitted
     first_result = @emitter.emit!
     second_result = @emitter.emit!
     assert_same first_result, second_result
@@ -253,7 +254,44 @@ class TestEmitter < Minitest::Test
 
     result = @emitter.emit!
     assert_equal "\e[22;4;1mstyled\e[0m", result
-    assert result.frozen?
+    refute result.frozen?
+  end
+
+  def test_emitter_is_single_use_after_emit
+    # Test that emitter becomes unusable after emit!
+    @emitter << "content"
+    result = @emitter.emit!
+    assert_equal "content", result
+
+    # After emit!, @out is nil so operations should fail
+    assert_raises(NoMethodError) { @emitter << "more" }
+  end
+
+  def test_multiple_emits_return_same_cached_result
+    @emitter.open_tag(:bold)
+    @emitter << "test"
+    @emitter.close_tag
+
+    first = @emitter.emit!
+    second = @emitter.emit!
+    third = @emitter.emit!
+
+    # All calls should return the same cached result
+    assert_same first, second
+    assert_same second, third
+    assert_equal "\e[22;1mtest\e[0m", first
+  end
+
+  def test_emitter_state_after_emit_is_finalized
+    @emitter.open_tag(:bold)
+    @emitter << "styled"
+    @emitter.close_tag
+
+    result = @emitter.emit!
+    assert_equal "\e[22;1mstyled\e[0m", result
+
+    # Emitter should be finalized and operations should fail
+    assert_raises(NoMethodError) { @emitter << "more" }
   end
 
   def test_comprehensive_stress_test

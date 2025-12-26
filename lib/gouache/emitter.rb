@@ -57,9 +57,10 @@ class Gouache
     end
 
     def emit!
-      return @out if @out.frozen?     # already emitted
+      return @emitted if @emitted
       @out << CSI << "0m" if @got_sgr # this replaces the final flush. if no sgr emitted, don't bother resetting
-      @out.freeze
+      @emitted, @out = @out, nil
+      @emitted
     end
 
     alias to_s emit!

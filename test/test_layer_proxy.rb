@@ -82,6 +82,47 @@ class TestLayerProxy < Minitest::Test
     assert_equal [0, 255, 0], result.rgb
   end
 
+  def test_underline_color_reader
+    @layer[Gouache::Layer::RANGES[:underline_color].index] = "red underline"
+    assert_equal "red underline", @proxy.underline_color
+  end
+
+  def test_underline_color_setter_with_color
+    color = Gouache::Color.over_rgb(255, 128, 0)
+    @proxy.underline_color = color
+    assert_equal color, @proxy.underline_color
+  end
+
+  def test_underline_color_setter_with_string
+    @proxy.underline_color = "58;2;255;128;0"
+    result = @proxy.underline_color
+    assert_instance_of Gouache::Color, result
+    assert_equal Gouache::Color::UL, result.role
+  end
+
+  def test_underline_color_setter_with_integer
+    @proxy.underline_color = 31  # basic red, will be converted to underline role
+    result = @proxy.underline_color
+    assert_instance_of Gouache::Color, result
+    assert_equal Gouache::Color::UL, result.role
+    assert_equal [205, 0, 0], result.rgb  # ANSI16 red RGB values
+  end
+
+  def test_underline_color_setter_with_nil
+    @proxy.underline_color = nil
+    assert_nil @proxy.underline_color
+  end
+
+  def test_underline_color_setter_role_reassignment
+    fg_color = Gouache::Color.rgb(255, 165, 0)
+    assert_equal Gouache::Color::FG, fg_color.role
+
+    @proxy.underline_color = fg_color
+    result = @proxy.underline_color
+    assert_equal Gouache::Color::UL, result.role
+    assert_equal [255, 165, 0], result.rgb
+  end
+
   def test_italic_setter_truthy
     @proxy.italic = true
     assert_equal 3, @layer[Gouache::Layer::RANGES[:italic].index]

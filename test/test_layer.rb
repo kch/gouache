@@ -11,6 +11,7 @@ class TestLayer < Minitest::Test
     @bg_pos = Gouache::Layer::RANGES.for(42).first
     @italic_pos = Gouache::Layer::RANGES.for(3).first
     @underline_pos = Gouache::Layer::RANGES.for(4).first
+    @underline_color_pos = Gouache::Layer::RANGES.for(58).first
     @bold_pos = Gouache::Layer::RANGES.for(1).first
     @dim_pos = Gouache::Layer::RANGES.for(2).first
   end
@@ -319,6 +320,12 @@ class TestLayer < Minitest::Test
     assert fg_range.member?(39)  # reset
     assert fg_range.member?(91)  # bright red
     refute fg_range.member?(41)  # not foreground (background)
+
+    # Test new underline_color range
+    underline_color_range = Gouache::Layer::RANGES[:underline_color]
+    assert underline_color_range.member?(58)  # underline color on
+    assert underline_color_range.member?(59)  # underline color off
+    refute underline_color_range.member?(4)   # not underline color (regular underline)
   end
 
   def test_base_layer_values
@@ -336,6 +343,10 @@ class TestLayer < Minitest::Test
     assert_equal 48, base[Gouache::Layer::RANGES[:bg].index].role
 
     assert_equal 22, base[Gouache::Layer::RANGES[:dim].index]
+
+    # underline_color position should contain integer reset value
+    assert_equal 59, base[Gouache::Layer::RANGES[:underline_color].index]  # underline color reset
+
     # Other positions should contain integers
     assert_equal 23, base[Gouache::Layer::RANGES[:italic].index]  # italic reset
     assert_equal 22, base[Gouache::Layer::RANGES[:bold].index]  # bold reset
@@ -360,6 +371,11 @@ class TestLayer < Minitest::Test
     assert_equal [@fg_pos], Gouache::Layer::RANGES.for(31)
     assert_equal [@bg_pos], Gouache::Layer::RANGES.for(42)
     assert_nil Gouache::Layer::RANGES.for(999)  # invalid code
+
+    # Test underline_color range
+    underline_color_pos = Gouache::Layer::RANGES[:underline_color].index
+    assert_equal [underline_color_pos], Gouache::Layer::RANGES.for(58)  # underline color on
+    assert_equal [underline_color_pos], Gouache::Layer::RANGES.for(59)  # underline color off
   end
 
   def test_ranges_for_method_multiple_matches
@@ -453,12 +469,15 @@ class TestLayer < Minitest::Test
   def test_layer_range_with_rgb_strings
     fg_range = Gouache::Layer::RANGES[:fg]  # foreground colors
     bg_range = Gouache::Layer::RANGES[:bg]  # background colors
+    underline_color_range = Gouache::Layer::RANGES[:underline_color]
 
     # RGB/256-color strings should be recognized by their first number
     assert fg_range.member?("38;5;123".to_i)      # 38 -> foreground
     assert fg_range.member?("38;2;255;0;0".to_i)  # 38 -> foreground
     assert bg_range.member?("48;5;123".to_i)      # 48 -> background
     assert bg_range.member?("48;2;0;255;0".to_i)  # 48 -> background
+    assert underline_color_range.member?("58;5;196".to_i)      # 58 -> underline color
+    assert underline_color_range.member?("58;2;255;0;0".to_i)  # 58 -> underline color
   end
 
   def test_layer_from_with_empty_array
@@ -770,12 +789,28 @@ class TestLayer < Minitest::Test
   end
 
   def test_layer_from_with_no_effects
+    # Test layer construction with no effects - just SGR codes
     layer = Gouache::Layer.from(1, 4, 31)
 
     assert_equal 1, layer[Gouache::Layer::RANGES[:bold].index]    # bold
     assert_equal 4, layer[Gouache::Layer::RANGES[:underline].index]    # underline
     assert_equal 31, layer[Gouache::Layer::RANGES[:fg].index]   # fg red
     assert_equal [], layer.effects
+  end
+
+  def test_layer_from_with_underline_color
+    # Test layer construction with underline color SGR codes
+    layer = Gouache::Layer.from(1, 58, 4, 31)
+
+    assert_equal 1, layer[Gouache::Layer::RANGES[:bold].index]            # bold
+    assert_equal 58, layer[@underline_color_pos]                          # underline color on
+    assert_equal 4, layer[Gouache::Layer::RANGES[:underline].index]       # underline
+    assert_equal 31, layer[Gouache::Layer::RANGES[:fg].index]             # fg red
+    assert_equal [], layer.effects
+
+    # Test underline color off
+    layer2 = Gouache::Layer.from(59)
+    assert_equal 59, layer2[@underline_color_pos]  # underline color off
   end
 
 

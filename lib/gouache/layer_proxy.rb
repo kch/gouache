@@ -4,7 +4,7 @@ class Gouache
   class LayerProxy
 
     Layer::RANGES.each do |k, r|
-      if k in :fg | :bg
+      if k in :fg | :bg | :underline_color
         define_method(k) { @layer[r.index] }
         define_method("#{k}=") do |v|
           @layer[r.index] = \

@@ -28,19 +28,19 @@ class Gouache
     RU_BASIC     = RangeUnion.new 39, 49, 30..37, 40..47, 90..97, 100..107 # sgr basic ranges
     RX_BASIC     = / (?: 3|4|9|10 ) [0-7] | [34]9  /x.w                    # same as above but for strings
     RU_SGR_NC    = RangeExclusion.new 0..107, RU_BASIC, 38, 48             # no-color, valid SGRs
-    RX_EXT_COLOR = /([34]8) ; (?: 5; (#{D8}) | 2; (#{D8}) ; (#{D8}) ; (#{D8}) )/x.w
-    RX_FN_CUBE   = /(on)?#[0-5]{3}/.w
-    RX_FN_HEX    = /(on)?#(\h{6})/.w
-    RX_FN_RGB    = /(on_)? rgb  \(\s* (#{D8})  \s*,\s* (#{D8}) \s*,\s* (#{D8}) \s*\)/x.w
-    RX_FN_256    = /(on_)? 256  \(\s* (#{D8})  \s* \)/x.w
-    RX_FN_GRAY   = /(on_)? gray \(\s* (#{D24}) \s* \)/x.w
+    RX_EXT_COLOR = /([345]8) ; (?: 5; (#{D8}) | 2; (#{D8}) ; (#{D8}) ; (#{D8}) )/x.w
+    RX_FN_CUBE   = /(on|over)?#[0-5]{3}/.w
+    RX_FN_HEX    = /(on|over)?#(\h{6})/.w
+    RX_FN_RGB    = /(on_|over_)? rgb  \(\s* (#{D8})  \s*,\s* (#{D8}) \s*,\s* (#{D8}) \s*\)/x.w
+    RX_FN_256    = /(on_|over_)? 256  \(\s* (#{D8})  \s* \)/x.w
+    RX_FN_GRAY   = /(on_|over_)? gray \(\s* (#{D24}) \s* \)/x.w
 
     private def compute_decl(x)
       Layer.from _compute_decl(x)
     end
 
     private def _compute_decl(x)
-      role = ->{ $1 ? 48 : 38 }
+      role = ->{ { on: 48, over: 58, nil => 38 }[$1&.chomp(?_)&.to_sym] }
       case x
       in nil          then []
       in Proc         then x

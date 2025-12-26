@@ -10,13 +10,16 @@ class Gouache
 
     FG = 38      # foreground role
     BG = 48      # background role
+    UL = 58      # underline color
+    UNDERLINE_COLOR = UL # for layer proxy effects code
+    ROLE = RangeUnion.new FG, BG, UL
     I8 = 0..255  # 8bit int range, for 256 colors and rgb channels
     IC = 0..5    # 216 color cube channel range
-    D8       = / 1?\d?\d | 2[0-4]\d | 25[0-5]              /x   # 0..255 string
-    RX_BASIC = / (?: 3|4|9|10 ) [0-7] | [34]9              /x.w # sgr basic ranges
-    RX_256   = / ([34]8) ; 5 ; (#{D8})                     /x.w # sgr 256 color
-    RX_RGB   = / ([34]8) ; 2 ; (#{D8}) ; (#{D8}) ; (#{D8}) /x.w # sgr truecolor
-    RX_HEX   = / \#? (\h\h) (\h\h) (\h\h)                  /x.w # hex syntax for truecolor
+    D8       = / 1?\d?\d | 2[0-4]\d | 25[0-5]               /x   # 0..255 string
+    RX_BASIC = / (?: 3|4|9|10 ) [0-7] | [34]9               /x.w # sgr basic ranges
+    RX_256   = / ([345]8) ; 5 ; (#{D8})                     /x.w # sgr 256 color
+    RX_RGB   = / ([345]8) ; 2 ; (#{D8}) ; (#{D8}) ; (#{D8}) /x.w # sgr truecolor
+    RX_HEX   = / \#? (\h\h) (\h\h) (\h\h)                   /x.w # hex syntax for truecolor
 
     def initialize(**kva)
       # very unforgiving as public use
@@ -25,15 +28,15 @@ class Gouache
       in sgr: RX_BASIC => s                                      then @sgr_basic = s.to_i
       in sgr: RX_256   => s                                      then @sgr = s; @role, @_256 = $~[1..].map(&:to_i)
       in sgr: RX_RGB   => s                                      then @sgr = s; @role, *@rgb = $~[1..].map(&:to_i)
-      in role: FG|BG => rl, rgb: [I8, I8, I8] => rgb             then @role = rl; @rgb = rgb
-      in role: FG|BG => rl, rgb: RX_HEX                          then @role = rl; @rgb = $~[1..].map{it.to_i(16)}
-      in role: FG|BG => rl, oklch: [0..1, 0.., Numeric] => lch   then @role = rl; @oklch = lch
-      in role: FG|BG => rl, gray: 0..23 => gray                  then @role = rl; @_256 = 232 + gray
-      in role: FG|BG => rl, cube: [IC => r, IC => g, IC => b]    then @role = rl; @_256 = 16 + 36*r + 6*g + b
+      in role: ROLE => rl, rgb: [I8, I8, I8] => rgb              then @role = rl; @rgb = rgb
+      in role: ROLE => rl, rgb: RX_HEX                           then @role = rl; @rgb = $~[1..].map{it.to_i(16)}
+      in role: ROLE => rl, oklch: [0..1, 0.., Numeric] => lch    then @role = rl; @oklch = lch
+      in role: ROLE => rl, gray: 0..23 => gray                   then @role = rl; @_256 = 232 + gray
+      in role: ROLE => rl, cube: [IC => r, IC => g, IC => b]     then @role = rl; @_256 = 16 + 36*r + 6*g + b
       in __private: [rl, sgr, _256, rgb, oklch]                  then @role, @sgr_basic, @_256, @rgb, @oklch = rl, sgr, _256, rgb, oklch
       else raise ArgumentError, kva.inspect
       end
-      raise ArgumentError, kva.inspect unless @role in 38 | 48 | nil
+      raise ArgumentError, kva.inspect unless @role in ROLE | nil
     end
 
     private_class_method def self.parse_rgb(args)
@@ -46,18 +49,23 @@ class Gouache
     end
 
     # constructors for styles
-    def self.sgr(sgr)        = new(sgr:)
-    def self.ansi(sgr)       = new(sgr:)
-    def self.rgb(*rgb)       = new(role: FG, rgb: parse_rgb(rgb))
-    def self.on_rgb(*rgb)    = new(role: BG, rgb: parse_rgb(rgb))
-    def self.hex(hs)         = new(role: FG, rgb: hs)
-    def self.on_hex(hs)      = new(role: BG, rgb: hs)
-    def self.cube(r,g,b)     = new(role: FG, cube: [r,g,b])
-    def self.on_cube(r,g,b)  = new(role: BG, cube: [r,g,b])
-    def self.gray(n)         = new(role: FG, gray: n)
-    def self.on_gray(n)      = new(role: BG, gray: n)
-    def self.oklch(l,c,h)    = new(role: FG, oklch: [l,c,h])
-    def self.on_oklch(l,c,h) = new(role: BG, oklch: [l,c,h])
+    def self.sgr(sgr)          = new(sgr:)
+    def self.ansi(sgr)         = new(sgr:)
+    def self.rgb(*rgb)         = new(role: FG, rgb: parse_rgb(rgb))
+    def self.on_rgb(*rgb)      = new(role: BG, rgb: parse_rgb(rgb))
+    def self.over_rgb(*rgb)    = new(role: UL, rgb: parse_rgb(rgb))
+    def self.hex(hs)           = new(role: FG, rgb: hs)
+    def self.on_hex(hs)        = new(role: BG, rgb: hs)
+    def self.over_hex(hs)      = new(role: UL, rgb: hs)
+    def self.cube(r,g,b)       = new(role: FG, cube: [r,g,b])
+    def self.on_cube(r,g,b)    = new(role: BG, cube: [r,g,b])
+    def self.over_cube(r,g,b)  = new(role: UL, cube: [r,g,b])
+    def self.gray(n)           = new(role: FG, gray: n)
+    def self.on_gray(n)        = new(role: BG, gray: n)
+    def self.over_gray(n)      = new(role: UL, gray: n)
+    def self.oklch(l,c,h)      = new(role: FG, oklch: [l,c,h])
+    def self.on_oklch(l,c,h)   = new(role: BG, oklch: [l,c,h])
+    def self.over_oklch(l,c,h) = new(role: UL, oklch: [l,c,h])
 
     def role
       @role || case @sgr_basic
@@ -98,6 +106,7 @@ class Gouache
     def _256 = @_256 || Term.nearest256(rgb)
 
     def basic
+      return nil if role == UL
       return @sgr_basic if @sgr_basic
       i = Term.nearest16(rgb)     # get the nearest to rgb
       x =  30 + i                 # go to 30 range for system colors
@@ -109,10 +118,11 @@ class Gouache
     def to_sgr(fallback: false)
       return sgr unless fallback
       fallback = Term.color_level if fallback == true # allow passing the fallback level explicity or true to determine from Term
-      case fallback
-      in :truecolor then sgr
-      in :_256      then (!@_256 && !@rgb && !@okkch && @sgr_basic) || [role, 5, @_256 || _256]*?;
-      in :basic     then basic
+      case [fallback, role]
+      in :truecolor, _ then sgr
+      in :_256, _      then (!@_256 && !@rgb && !@okkch && @sgr_basic) || [role, 5, @_256 || _256]*?;
+      in :basic, UL    then [role, 5, Term.nearest16(rgb)]*?;
+      in :basic, _     then basic
       end
     end
 
@@ -120,11 +130,13 @@ class Gouache
 
     def change_role(new_role)
       return self unless new_role != role
-      sgr_basic = @sgr_basic + { FG => -10, BG => 10 }[new_role] if @sgr_basic
-      Color.new __private: [new_role, sgr_basic, @_256, @rgb, @oklch]
+      sgr_basic = @sgr_basic + { FG => -10, BG => 10 }[new_role] if @sgr_basic && new_role != UL
+      rgb_ = @rgb
+      rgb_ = rgb if new_role == UL && ![@_256, @rgb, @oklch].any?
+      Color.new __private: [new_role, sgr_basic, @_256, rgb_, @oklch]
     end
 
-    def self.merge(*colors) = colors.group_by(&:role).transform_values{|cs| cs.inject(&:merge) }.values_at(FG, BG)
+    def self.merge(*colors) = colors.group_by(&:role).transform_values{|cs| cs.inject(&:merge) }.values_at(FG, BG, UL)
 
     def merge(other)
       raise ArgumentError, "different roles" if role != other.role

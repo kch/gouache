@@ -75,6 +75,18 @@ class TestColor < Minitest::Test
     color = Gouache::Color.sgr("38;2;255;128;64")
     assert_equal [255, 128, 64], color.rgb
     assert_equal "38;2;255;128;64", color.sgr
+
+    # Test underline color SGR sequences
+    color = Gouache::Color.sgr("58;2;255;128;64")
+    assert_equal [255, 128, 64], color.rgb
+    assert_equal "58;2;255;128;64", color.sgr
+    assert_equal 58, color.role
+
+    # Test underline 256-color SGR sequences
+    color = Gouache::Color.sgr("58;5;196")
+    assert_equal 196, color._256
+    assert_equal "58;5;196", color.sgr
+    assert_equal 58, color.role
   end
 
   def test_ansi_constructor_alias
@@ -129,6 +141,62 @@ class TestColor < Minitest::Test
     assert_equal 48, color.role  # background
   end
 
+  def test_over_rgb_constructor
+    # Separate arguments
+    color = Gouache::Color.over_rgb(255, 0, 0)
+    assert_equal [255, 0, 0], color.rgb
+    assert_equal "58;2;255;0;0", color.sgr
+    assert_equal 58, color.role  # underline
+
+    # Array argument
+    color = Gouache::Color.over_rgb([0, 255, 0])
+    assert_equal [0, 255, 0], color.rgb
+    assert_equal "58;2;0;255;0", color.sgr
+
+    # Hex string with #
+    color = Gouache::Color.over_rgb("#0000ff")
+    assert_equal [0, 0, 255], color.rgb
+    assert_equal "58;2;0;0;255", color.sgr
+
+    # Hex string without #
+    color = Gouache::Color.over_rgb("ff00ff")
+    assert_equal [255, 0, 255], color.rgb
+    assert_equal "58;2;255;0;255", color.sgr
+  end
+
+  def test_over_hex_constructor
+    # Without # prefix
+    color = Gouache::Color.over_hex("ff0000")
+    assert_equal [255, 0, 0], color.rgb
+    assert_equal "58;2;255;0;0", color.sgr
+    assert_equal 58, color.role
+
+    # With # prefix
+    color = Gouache::Color.over_hex("#00ff00")
+    assert_equal [0, 255, 0], color.rgb
+    assert_equal "58;2;0;255;0", color.sgr
+  end
+
+  def test_over_cube_constructor
+    color = Gouache::Color.over_cube(5, 0, 0)  # max red in 6x6x6 cube
+    expected_sgr = "58;5;#{16 + 36*5 + 6*0 + 0}"  # 58;5;196
+    assert_equal expected_sgr, color.sgr
+    assert_equal 58, color.role
+  end
+
+  def test_over_gray_constructor
+    color = Gouache::Color.over_gray(12)
+    expected_sgr = "58;5;#{232 + 12}"  # 58;5;244
+    assert_equal expected_sgr, color.sgr
+    assert_equal 58, color.role
+  end
+
+  def test_over_oklch_constructor
+    color = Gouache::Color.over_oklch(0.7, 0.15, 180)
+    assert_equal [0.7, 0.15, 180], color.oklch
+    assert_equal 58, color.role  # underline
+  end
+
   def test_role_method
     # Test foreground colors
     color = Gouache::Color.rgb(255, 0, 0)
@@ -143,6 +211,16 @@ class TestColor < Minitest::Test
 
     color = Gouache::Color.sgr("41")
     assert_equal 48, color.role
+
+    # Test underline colors
+    color = Gouache::Color.over_rgb(255, 0, 0)
+    assert_equal 58, color.role
+
+    color = Gouache::Color.sgr("58;5;196")
+    assert_equal 58, color.role
+
+    color = Gouache::Color.sgr("58;2;255;0;0")
+    assert_equal 58, color.role
   end
 
   def test_256_method
@@ -159,6 +237,10 @@ class TestColor < Minitest::Test
     assert_kind_of Integer, basic
     assert_operator basic, :>=, 30
     assert_operator basic, :<=, 107
+
+    # Test underline colors return nil for basic
+    underline_color = Gouache::Color.over_rgb(255, 0, 0)
+    assert_nil underline_color.basic
   end
 
   def test_to_i_method
@@ -268,6 +350,49 @@ class TestColor < Minitest::Test
     color = Gouache::Color.on_rgb(255, 0, 0)
     result = color.to_sgr(fallback: :basic)
     assert_equal 101, result  # bright red background
+
+    # Test underline - should convert to 256-color format instead of basic
+    color = Gouache::Color.over_rgb(255, 0, 0)
+    result = color.to_sgr(fallback: :basic)
+    assert_match(/^58;5;\d+$/, result)  # converts to 256-color format
+
+    # Extract the color index and verify it's in the first 16 colors (0-15)
+    color_index = result.match(/58;5;(\d+)/)[1].to_i
+    assert_operator color_index, :>=, 0, "Color index should be >= 0"
+    assert_operator color_index, :<=, 15, "Color index should be <= 15 (first 16 colors)"
+  end
+
+  def test_underline_basic_fallback_uses_first_16_colors
+    # Test specific RGB colors with expected ANSI16 mappings based on proximity
+    test_colors = [
+      [[200, 0, 0], 1, "should map to red [205,0,0]"],
+      [[0, 200, 0], 2, "should map to green [0,205,0]"],
+      [[200, 200, 0], 3, "should map to yellow [205,205,0]"],
+      [[0, 0, 230], 4, "should map to blue [0,0,238]"],
+      [[200, 0, 200], 5, "should map to magenta [205,0,205]"],
+      [[0, 200, 200], 6, "should map to cyan [0,205,205]"],
+      [[240, 240, 240], 7, "should map to white [229,229,229]"],
+      [[120, 120, 120], 8, "should map to bright black [127,127,127]"],
+      [[250, 0, 0], 9, "should map to bright red [255,0,0]"],
+      [[0, 250, 0], 10, "should map to bright green [0,255,0]"],
+      [[250, 250, 0], 11, "should map to bright yellow [255,255,0]"],
+      [[100, 100, 250], 12, "should map to bright blue [92,92,255]"],
+      [[250, 0, 250], 13, "should map to bright magenta [255,0,255]"],
+      [[0, 250, 250], 14, "should map to bright cyan [0,255,255]"],
+      [[250, 250, 250], 15, "should map to bright white [255,255,255]"]
+    ]
+
+    test_colors.each do |rgb, expected_index, description|
+      color = Gouache::Color.over_rgb(*rgb)
+      result = color.to_sgr(fallback: :basic)
+
+      # Should be in 58;5;n format
+      assert_match(/^58;5;\d+$/, result, "#{description}")
+
+      # Extract color index and verify it matches expected
+      color_index = result.match(/58;5;(\d+)/)[1].to_i
+      assert_equal expected_index, color_index, "RGB #{rgb} #{description}"
+    end
   end
 
   # Cross-constructor compatibility tests
@@ -370,6 +495,24 @@ class TestColor < Minitest::Test
     assert_match(/^48;2;\d+;\d+;\d+$/, sgr3)  # background role preserved
   end
 
+  def test_underline_colors_work_across_constructors
+    # Test that underline constructors maintain role across all methods
+    ul_color1 = Gouache::Color.over_rgb(255, 100, 0)
+    assert_equal "58;2;255;100;0", ul_color1.sgr
+    assert_equal "58;2;255;100;0", ul_color1.to_sgr
+
+    ul_color2 = Gouache::Color.over_hex("ff6400")
+    assert_equal "58;2;255;100;0", ul_color2.sgr
+    assert_equal "58;2;255;100;0", ul_color2.to_sgr
+
+    ul_color3 = Gouache::Color.over_oklch(0.7, 0.18, 50)
+    assert_equal 58, ul_color3.role
+    assert_equal 3, ul_color3.rgb.size
+
+    sgr3 = ul_color3.sgr
+    assert_match(/^58;2;\d+;\d+;\d+$/, sgr3)  # underline role preserved
+  end
+
   def test_roundtrip_consistency
     # Test that converting through different representations maintains consistency
     original_rgb = [180, 90, 240]
@@ -426,6 +569,28 @@ class TestColor < Minitest::Test
     # Test role + cube
     color = Gouache::Color.new(role: 48, cube: [5, 0, 0])
     assert_equal 48, color.role
+
+    # Test underline role (58)
+    color = Gouache::Color.new(role: 58, rgb: [255, 0, 0])
+    assert_equal [255, 0, 0], color.rgb
+    assert_equal 58, color.role
+
+    color = Gouache::Color.new(role: 58, oklch: [0.8, 0.12, 60])
+    assert_equal 58, color.role
+
+    color = Gouache::Color.new(role: 58, gray: 15)
+    assert_equal 58, color.role
+
+    color = Gouache::Color.new(role: 58, cube: [3, 4, 2])
+    assert_equal 58, color.role
+
+    # Test underline SGR sequences
+    color = Gouache::Color.new(sgr: "58;5;196")
+    assert_equal 58, color.role
+
+    color = Gouache::Color.new(sgr: "58;2;255;128;64")
+    assert_equal [255, 128, 64], color.rgb
+    assert_equal 58, color.role
   end
 
   def test_initialize_constraint_failures
@@ -531,9 +696,10 @@ class TestColor < Minitest::Test
     ]
 
     result = Gouache::Color.merge(*colors)
-    assert_equal 2, result.length
+    assert_equal 3, result.length
     assert_kind_of Gouache::Color, result[0]
     assert_nil result[1]  # no background colors
+    assert_nil result[2]  # no underline colors
   end
 
   def test_merge_class_method_mixed_roles
@@ -544,16 +710,39 @@ class TestColor < Minitest::Test
       Gouache::Color.sgr(42)              # bg
     ]
 
-    fg, bg = Gouache::Color.merge(*colors)
+    fg, bg, ul = Gouache::Color.merge(*colors)
     assert_kind_of Gouache::Color, fg
     assert_kind_of Gouache::Color, bg
+    assert_nil ul  # no underline colors
     assert_equal 38, fg.role
     assert_equal 48, bg.role
   end
 
   def test_merge_class_method_empty
     result = Gouache::Color.merge()
-    assert_equal [nil, nil], result
+    assert_equal [nil, nil, nil], result
+  end
+
+  def test_merge_class_method_with_underline_colors
+    colors = [
+      Gouache::Color.rgb(255, 0, 0),        # fg
+      Gouache::Color.on_rgb(0, 255, 0),     # bg
+      Gouache::Color.over_rgb(0, 0, 255),   # ul
+      Gouache::Color.sgr(31),               # fg
+      Gouache::Color.over_cube(5, 2, 1)     # ul
+    ]
+
+    fg, bg, ul = Gouache::Color.merge(*colors)
+    assert_kind_of Gouache::Color, fg
+    assert_kind_of Gouache::Color, bg
+    assert_kind_of Gouache::Color, ul
+    assert_equal 38, fg.role
+    assert_equal 48, bg.role
+    assert_equal 58, ul.role
+
+    # Check merged underline has both representations
+    assert_equal [0, 0, 255], ul.rgb
+    assert_equal 209, ul._256  # cube(5,2,1) = 16 + 36*5 + 6*2 + 1
   end
 
   def test_merge_preserves_fallback_chain
@@ -805,6 +994,30 @@ class TestColor < Minitest::Test
     assert_equal 48, bg_complex.role
     assert_equal 41, bg_complex.basic        # basic red background
     assert_equal 196, bg_complex._256         # preserves 256-color
+
+    # Test changing to underline role
+    fg_basic = Gouache::Color.sgr(31)         # basic red foreground
+    ul_basic = fg_basic.change_role(58)       # change to underline
+
+    assert_equal 58, ul_basic.role
+    assert_nil ul_basic.basic                 # underline has no basic SGR
+    assert_equal [205, 0, 0], ul_basic.rgb    # RGB calculated from basic
+
+    # Test changing RGB color to underline
+    rgb_color = Gouache::Color.rgb(100, 150, 200)
+    ul_rgb = rgb_color.change_role(58)
+
+    assert_equal 58, ul_rgb.role
+    assert_equal [100, 150, 200], ul_rgb.rgb
+    assert_nil ul_rgb.basic
+
+    # Test changing 256-color to underline
+    color_256 = Gouache::Color.sgr("38;5;196")
+    ul_256 = color_256.change_role(58)
+
+    assert_equal 58, ul_256.role
+    assert_equal 196, ul_256._256
+    assert_nil ul_256.basic
   end
 
   def test_to_i_method_extracts_sgr_prefix
@@ -886,6 +1099,12 @@ class TestColor < Minitest::Test
     # Should downconvert to basic
     result_basic = truecolor.to_s(fallback: :basic)
     refute result_basic.include?(";"), "Basic fallback should not contain semicolons"
+
+    # Test underline color special case - basic fallback converts to 256-color
+    underline_truecolor = Gouache::Color.new(sgr: "58;2;255;0;0")  # underline truecolor red
+    ul_basic = underline_truecolor.to_s(fallback: :basic)
+    assert ul_basic.start_with?("58;5;"), "Underline basic fallback should convert to 256-color format"
+    assert ul_basic.include?(";"), "Underline basic fallback should contain semicolons (256-color format)"
   end
 
   def test_oklch_shift_method

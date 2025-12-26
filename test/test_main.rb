@@ -230,12 +230,18 @@ class TestMain < Minitest::Test
     result = Gouache.scan_sgr("48;5;46")
     assert_equal ["48;5;46"], result
 
+    result = Gouache.scan_sgr("58;5;196")
+    assert_equal ["58;5;196"], result
+
     # 24-bit RGB sequences
     result = Gouache.scan_sgr("38;2;255;128;64")
     assert_equal ["38;2;255;128;64"], result
 
     result = Gouache.scan_sgr("48;2;0;255;0")
     assert_equal ["48;2;0;255;0"], result
+
+    result = Gouache.scan_sgr("58;2;255;128;64")
+    assert_equal ["58;2;255;128;64"], result
 
     # Mixed basic and extended
     result = Gouache.scan_sgr("1;38;5;196;42")
@@ -244,6 +250,9 @@ class TestMain < Minitest::Test
     # Complex sequences with multiple extended colors
     result = Gouache.scan_sgr("38;2;255;0;0;48;5;46;1")
     assert_equal ["38;2;255;0;0", "48;5;46", 1], result
+
+    result = Gouache.scan_sgr("38;2;255;0;0;58;5;46;1")
+    assert_equal ["38;2;255;0;0", "58;5;46", 1], result
 
     # Edge cases - boundary values
     result = Gouache.scan_sgr("38;5;0")
@@ -290,6 +299,9 @@ class TestMain < Minitest::Test
     result = Gouache.scan_sgr("38;5;123;48;2;200;100;50")
     assert_equal ["38;5;123", "48;2;200;100;50"], result
 
+    result = Gouache.scan_sgr("38;5;123;58;2;200;100;50")
+    assert_equal ["38;5;123", "58;2;200;100;50"], result
+
     # Multiple semicolons should be handled gracefully
     result = Gouache.scan_sgr("31;;1")
     assert_equal [31, 1], result
@@ -313,6 +325,12 @@ class TestMain < Minitest::Test
     result = Gouache.scan_sgr("\e[48;2;255;128;64m")
     assert_equal ["48;2;255;128;64"], result
 
+    result = Gouache.scan_sgr("\e[58;5;196m")
+    assert_equal ["58;5;196"], result
+
+    result = Gouache.scan_sgr("\e[58;2;255;128;64m")
+    assert_equal ["58;2;255;128;64"], result
+
     result = Gouache.scan_sgr("\e[0;38;2;255;0;0;48;5;46;1m")
     assert_equal [0, "38;2;255;0;0", "48;5;46", 1], result
 
@@ -322,6 +340,9 @@ class TestMain < Minitest::Test
 
     result = Gouache.scan_sgr("\e[38;5;196m\e[48;2;0;255;0m")
     assert_equal ["38;5;196", "48;2;0;255;0"], result
+
+    result = Gouache.scan_sgr("\e[38;5;196m\e[58;2;0;255;0m")
+    assert_equal ["38;5;196", "58;2;0;255;0"], result
 
     # SGR with extra characters should extract only the sequences
     result = Gouache.scan_sgr("hello\e[31mworld\e[0m!")

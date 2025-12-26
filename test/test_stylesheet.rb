@@ -428,7 +428,14 @@ class TestStylesheet < Minitest::Test
       t: "#123abc",
       u: "on#123",
       v: "on#123abc",
-      w: ["blink", :underline, :l, "on#123"]
+      w: ["blink", :underline, :l, "on#123"],
+
+      # New over_* underline color functions
+      over_rgb1: "over_rgb(255,128,0)",
+      over_gray1: "over_gray(15)",
+      over_2561: "over_256(196)",
+      over_hex1: "over#ff8000",
+      over_cube1: "over#520"
     }
 
     ss = Gouache::Stylesheet::BASE.merge(styles)
@@ -449,6 +456,13 @@ class TestStylesheet < Minitest::Test
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;123"), ss.layer_map[:n]        # 256(123)
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;1;2;3"), ss.layer_map[:o]      # on_rgb(1,2,3)
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;67"), ss.layer_map[:s]         # #123 = 1*36+2*6+3+16
+
+    # Test new over_* underline color functions
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;2;255;128;0"), ss.layer_map[:over_rgb1]  # over_rgb(255,128,0)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;5;247"), ss.layer_map[:over_gray1]        # over_gray(15) = 232+15
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;5;196"), ss.layer_map[:over_2561]         # over_256(196)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;2;255;128;0"), ss.layer_map[:over_hex1]   # over#ff8000
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;5;208"), ss.layer_map[:over_cube1]        # over#520 = 5*36+2*6+0+16
 
     # Test complex array combination: ["blink", :underline, :l, "on#123"]
     # Expected: gray(23)=38;5;255 + on#123=48;5;67 + blink(5) + underline(4)
@@ -526,18 +540,24 @@ class TestStylesheet < Minitest::Test
       rgb2:           "rgb(255,255,255)",
       rgb_bg1:        "on_rgb(128,64,32)",
       rgb_bg2:        "on_rgb(255,0,128)",
+      rgb_ul1:        "over_rgb(255,128,0)",
+      rgb_ul2:        "over_rgb(0,255,128)",
 
       # 256-color variants
       color256_1:     "256(0)",
       color256_2:     "256(255)",
       color256_bg1:   "on_256(0)",
       color256_bg2:   "on_256(255)",
+      color256_ul1:   "over_256(196)",
+      color256_ul2:   "over_256(46)",
 
       # Grayscale variants
       gray1:          "gray(0)",
       gray2:          "gray(23)",
       gray_bg1:       "on_gray(0)",
       gray_bg2:       "on_gray(23)",
+      gray_ul1:       "over_gray(15)",
+      gray_ul2:       "over_gray(5)",
 
       # Hex variants
       hex3_1:         "#000",
@@ -564,16 +584,22 @@ class TestStylesheet < Minitest::Test
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;2;255;255;255"), ss.layer_map[:rgb2]    # rgb(255,255,255)
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;128;64;32"), ss.layer_map[:rgb_bg1]   # on_rgb(128,64,32)
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;255;0;128"), ss.layer_map[:rgb_bg2]   # on_rgb(255,0,128)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;2;255;128;0"), ss.layer_map[:rgb_ul1]   # over_rgb(255,128,0)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;2;0;255;128"), ss.layer_map[:rgb_ul2]   # over_rgb(0,255,128)
 
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;0"), ss.layer_map[:color256_1]        # 256(0)
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;255"), ss.layer_map[:color256_2]      # 256(255)
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;0"), ss.layer_map[:color256_bg1]      # on_256(0)
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;255"), ss.layer_map[:color256_bg2]    # on_256(255)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;5;196"), ss.layer_map[:color256_ul1]    # over_256(196)
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;5;46"), ss.layer_map[:color256_ul2]     # over_256(46)
 
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;232"), ss.layer_map[:gray1]           # gray(0) = 232+0
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;255"), ss.layer_map[:gray2]           # gray(23) = 232+23
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;232"), ss.layer_map[:gray_bg1]        # on_gray(0) = 232+0
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;255"), ss.layer_map[:gray_bg2]        # on_gray(23) = 232+23
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;5;247"), ss.layer_map[:gray_ul1]        # over_gray(15) = 232+15
+    assert_equal Gouache::Layer.from(Gouache::Color.sgr "58;5;237"), ss.layer_map[:gray_ul2]        # over_gray(5) = 232+5
 
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;16"), ss.layer_map[:hex3_1]           # #000 = 0*36+0*6+0+16
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "38;5;231"), ss.layer_map[:hex3_2]          # #555 = 5*36+5*6+5+16
@@ -1165,6 +1191,10 @@ class TestStylesheet < Minitest::Test
     expected = Gouache::Layer.from(Gouache::Color.sgr("48;2;0;255;0"))
     assert_equal expected, result
 
+    result = @ss.send(:compute_decl, "over#0000ff")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("58;2;0;0;255"))
+    assert_equal expected, result
+
     result = @ss.send(:compute_decl, "#123abc")
     expected = Gouache::Layer.from(Gouache::Color.sgr("38;2;18;58;188"))
     assert_equal expected, result
@@ -1176,6 +1206,10 @@ class TestStylesheet < Minitest::Test
 
     result = @ss.send(:compute_decl, "on_rgb(0, 255, 0)")
     expected = Gouache::Layer.from(Gouache::Color.sgr("48;2;0;255;0"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "over_rgb(255, 128, 0)")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("58;2;255;128;0"))
     assert_equal expected, result
 
     result = @ss.send(:compute_decl, "rgb( 100 , 150 , 200 )")
@@ -1196,8 +1230,12 @@ class TestStylesheet < Minitest::Test
     assert_equal expected, result
 
     # RX_FN_GRAY: /(on_)? gray \(\s* (D24) \s* \)/
-    result = @ss.send(:compute_decl, "gray(12)")
-    expected = Gouache::Layer.from(Gouache::Color.sgr("38;5;244"))
+    result = @ss.send(:compute_decl, "on_gray(15)")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("48;5;247"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "over_gray(10)")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("58;5;242"))
     assert_equal expected, result
 
     result = @ss.send(:compute_decl, "on_gray( 0 )")
@@ -1213,8 +1251,16 @@ class TestStylesheet < Minitest::Test
     expected = Gouache::Layer.from(Gouache::Color.sgr("38;5;196"))
     assert_equal expected, result
 
-    result = @ss.send(:compute_decl, "on_256( 46 )")
+    result = @ss.send(:compute_decl, "on_256(46)")
     expected = Gouache::Layer.from(Gouache::Color.sgr("48;5;46"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "over_256(196)")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("58;5;196"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "over#520")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("58;5;208"))
     assert_equal expected, result
 
     result = @ss.send(:compute_decl, "256(255)")

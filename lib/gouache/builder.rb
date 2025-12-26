@@ -137,8 +137,8 @@ class Gouache
         @nesting += 1
         case builder&.arity
         in nil
-        in 1 then builder[self]
-        in 0 then instance_exec(&builder)
+        in 1 then builder[self]            # {|x| x.tag ... } or { it.tag ... } form
+        in 0 then instance_exec(&builder)  # { tag ... } form
         in _ then ::Kernel.raise ::ArgumentError
         end
         @nesting -= 1

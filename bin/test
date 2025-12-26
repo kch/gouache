@@ -4,14 +4,18 @@
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 $LOAD_PATH.unshift File.expand_path("../test", __dir__)
 
-argv, files = ARGV.partition { it.start_with? ?- }  # Separate file args from minitest args
-ARGV.replace(argv)                                  # Set ARGV to minitest args only
+# janky way to avoid opt parsing
+files, argv = ARGV.map{ [Dir["test/**/*#{it}*.rb"], it] }.partition{ it.first.any? }
+files = files.map(&:first).flatten
+files = Dir["test/**/*.rb"] if files.empty?
+ARGV.replace(argv.map(&:last))
+def opt!(*xs) = xs.flatten.map{ ARGV.delete it }.any?
 
 require "minitest/reporters"
-require "minitest/debugger"  if (ARGV & %w[ -d --debug --debugger ]).any?
-require "minitest/fail_fast" if (ARGV & %w[ -f --fail-fast ]).any?
-$VERBOSE = true if (ARGV & %w[ -w --warnings ]).any?
-if (ARGV & %w[ -c --color ]).any?
+require "minitest/debugger"  if opt! %w[ -d --debug --debugger ]
+require "minitest/fail_fast" if opt! %w[ -f --fail-fast ]
+$VERBOSE = true if opt! %w[ -w --warnings ]
+if opt! %w[ -c --color ]
   # Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
   Minitest::Reporters.use! Minitest::Reporters::DefaultReporter.new(color: true)
 end
@@ -41,11 +45,8 @@ Minitest::Reporters.use!(
       end
     end
   end.new
-) if (ARGV & %w[ -l --list ]).any?
-
+) if opt! %w[ -l --list ]
 
 require "minitest/autorun"
 
-files.map!{ "*#{it}*" }
-files = ["*"] if files.empty?
-files.flat_map{ Dir["test/**/*#{it}*.rb"] }.each{ require_relative "../#{it}" }
+files.each{ require_relative "../#{it}" }

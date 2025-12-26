@@ -36,7 +36,7 @@ class Gouache
     alias embed wrap
 
     extend Forwardable
-    def_delegators "::Gouache::MAIN", :enable, :disable, :reopen, :enabled?, :puts, :print
+    def_delegators "::Gouache::MAIN", :enable, :disable, :reopen, :enabled?, :puts, :print, :refinement
 
     def method_missing(m, ...)   = Builder::Proxy.for(MAIN, m, ...) || super
     def [](*args, **styles, &b)  = (styles.empty? ? MAIN : MAIN.dup(styles:))[*args, &b]
@@ -84,6 +84,18 @@ class Gouache
   def call(...)
     raise ArgumentError unless block_given?
     Builder::Proxy.for(self, nil, ...)
+  end
+
+  def refinement
+    instance = self
+    style_methods = instance.rules.tags
+    other_methods = %i[ unpaint repaint wrap ]
+    Module.new do
+      refine String do
+        style_methods.each{|m| define_method(m) { instance[m, self] } unless method_defined? m }
+        other_methods.each{|m| define_method(m) { instance.send m, self } unless method_defined? m }
+      end
+    end
   end
 
 end

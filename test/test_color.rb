@@ -888,5 +888,151 @@ class TestColor < Minitest::Test
     refute result_basic.include?(";"), "Basic fallback should not contain semicolons"
   end
 
+  def test_oklch_shift_method
+    color = Gouache::Color.oklch(0.7, 0.15, 180)
+
+    # Test basic shifting
+    shifted = color.oklch_shift(0.1, 0.05, 90)
+    l, c, h = shifted.oklch
+    assert_in_delta 0.8, l, 0.001
+    assert_in_delta 0.2, c, 0.001
+    assert_in_delta 270, h, 0.001
+
+    # Test lightness clamping
+    bright = color.oklch_shift(0.5, 0, 0)  # would be 1.2, should clamp to 1.0
+    assert_equal 1.0, bright.oklch[0]
+
+    dark = color.oklch_shift(-1.0, 0, 0)   # would be -0.3, should clamp to 0.0
+    assert_equal 0.0, dark.oklch[0]
+
+    # Test chroma clamping (no negative values)
+    low_chroma = color.oklch_shift(0, -0.3, 0)  # would be -0.15, should clamp to 0.0
+    assert_equal 0.0, low_chroma.oklch[1]
+
+    # Test role preservation
+    bg_color = Gouache::Color.on_oklch(0.5, 0.1, 120)
+    shifted_bg = bg_color.oklch_shift(0.1, 0, 60)
+    assert_equal Gouache::Color::BG, shifted_bg.role
+  end
+
+  def test_rgb_shift_method
+    color = Gouache::Color.rgb(100, 150, 200)
+
+    # Test basic shifting
+    shifted = color.rgb_shift(50, -25, 30)
+    assert_equal [150, 125, 230], shifted.rgb
+
+    # Test clamping at upper bound
+    bright = color.rgb_shift(200, 200, 200)  # would exceed 255
+    assert_equal [255, 255, 255], bright.rgb
+
+    # Test clamping at lower bound
+    dark = color.rgb_shift(-200, -200, -250)  # would go below 0
+    assert_equal [0, 0, 0], dark.rgb
+
+    # Test role preservation
+    bg_color = Gouache::Color.on_rgb(50, 100, 150)
+    shifted_bg = bg_color.rgb_shift(10, 20, 30)
+    assert_equal Gouache::Color::BG, shifted_bg.role
+    assert_equal [60, 120, 180], shifted_bg.rgb
+  end
+
+  def test_oklch_shift_with_wrapped_absolute_values
+    color = Gouache::Color.oklch(0.7, 0.15, 180)
+
+    # Test absolute replacement with wrapped values
+    shifted = color.oklch_shift([0.5], [0.3], [270])
+    l, c, h = shifted.oklch
+    assert_in_delta 0.5, l, 0.001  # absolute replacement, not 0.7 + 0.5
+    assert_in_delta 0.3, c, 0.001  # absolute replacement, not 0.15 + 0.3
+    assert_in_delta 270, h, 0.001  # absolute replacement, not 180 + 270
+
+    # Test mixed delta and absolute
+    mixed = color.oklch_shift(0.1, [0.25], 45)  # delta, absolute, delta
+    l2, c2, h2 = mixed.oklch
+    assert_in_delta 0.8, l2, 0.001   # 0.7 + 0.1 (delta)
+    assert_in_delta 0.25, c2, 0.001  # 0.25 (absolute)
+    assert_in_delta 225, h2, 0.001   # 180 + 45 (delta)
+
+    # Test with clamping on absolute values
+    clamped = color.oklch_shift([1.5], [-0.1], [400])
+    l3, c3, h3 = clamped.oklch
+    assert_equal 1.0, l3  # clamped from 1.5 to 1.0
+    assert_equal 0.0, c3  # clamped from -0.1 to 0.0
+    assert_in_delta 400, h3, 0.001  # hue not clamped, wraps naturally
+  end
+
+  def test_rgb_shift_with_wrapped_absolute_values
+    color = Gouache::Color.rgb(100, 150, 200)
+
+    # Test absolute replacement with wrapped values
+    shifted = color.rgb_shift([50], [75], [250])
+    assert_equal [50, 75, 250], shifted.rgb
+
+    # Test mixed delta and absolute
+    mixed = color.rgb_shift(25, [100], -50)  # delta, absolute, delta
+    assert_equal [125, 100, 150], mixed.rgb  # 100+25, 100, 200-50
+
+    # Test with clamping on absolute values
+    clamped = color.rgb_shift([300], [-10], [500])
+    assert_equal [255, 0, 255], clamped.rgb  # all clamped to valid range
+  end
+
+  def test_rgb_shift_with_floats_returns_integers
+    color = Gouache::Color.rgb(100, 150, 200)
+
+    # Test that float deltas get converted to integers
+    shifted = color.rgb_shift(10.7, -25.3, 30.9)
+    r, g, b = shifted.rgb
+    assert_instance_of Integer, r
+    assert_instance_of Integer, g
+    assert_instance_of Integer, b
+    assert_equal [111, 125, 231], [r, g, b]  # rounded values
+
+    # Test with wrapped float absolutes
+    absolute = color.rgb_shift([50.6], [75.2], [250.8])
+    r2, g2, b2 = absolute.rgb
+    assert_instance_of Integer, r2
+    assert_instance_of Integer, g2
+    assert_instance_of Integer, b2
+    assert_equal [51, 75, 251], [r2, g2, b2]  # rounded values
+  end
+
+  def test_oklch_shift_with_invalid_arguments
+    color = Gouache::Color.oklch(0.7, 0.15, 180)
+
+    # Test invalid argument types
+    assert_raises(ArgumentError) { color.oklch_shift("bad", 0, 0) }
+    assert_raises(ArgumentError) { color.oklch_shift(0, nil, 0) }
+    assert_raises(ArgumentError) { color.oklch_shift(0, 0, {}) }
+
+    # Test invalid wrapped array structure
+    assert_raises(ArgumentError) { color.oklch_shift([1, 2], 0, 0) }  # multiple elements
+    assert_raises(ArgumentError) { color.oklch_shift([], 0, 0) }      # empty array
+    assert_raises(ArgumentError) { color.oklch_shift(0, 0, ["bad"]) } # non-numeric in array
+
+    # Test wrong number of arguments
+    assert_raises(ArgumentError) { color.oklch_shift(0, 0) }          # too few
+    assert_raises(ArgumentError) { color.oklch_shift(0, 0, 0, 0) }    # too many
+  end
+
+  def test_rgb_shift_with_invalid_arguments
+    color = Gouache::Color.rgb(100, 150, 200)
+
+    # Test invalid argument types
+    assert_raises(ArgumentError) { color.rgb_shift("bad", 0, 0) }
+    assert_raises(ArgumentError) { color.rgb_shift(0, true, 0) }
+    assert_raises(ArgumentError) { color.rgb_shift(0, 0, []) }        # empty array
+
+    # Test invalid wrapped array structure
+    assert_raises(ArgumentError) { color.rgb_shift([10, 20], 0, 0) }  # multiple elements
+    assert_raises(ArgumentError) { color.rgb_shift(0, ["text"], 0) }  # non-numeric in array
+    assert_raises(ArgumentError) { color.rgb_shift(0, 0, [nil]) }     # nil in array
+
+    # Test wrong number of arguments
+    assert_raises(ArgumentError) { color.rgb_shift(0) }               # too few
+    assert_raises(ArgumentError) { color.rgb_shift(0, 0, 0, 0, 0) }   # too many
+  end
+
 
 end

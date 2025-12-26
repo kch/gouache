@@ -134,6 +134,20 @@ class Gouache
 
     def to_i = sgr.to_i
 
+    def apply_deltas(xs, ds)
+      raise ArgumentError unless ds in [Numeric | [Numeric], Numeric | [Numeric], Numeric | [Numeric]]
+      xs.zip(ds).map{|x,d| (d in [d_]) ? d_ : x + d }
+    end
+
+    def oklch_shift(*ds)
+      l, c, h = apply_deltas(oklch, ds)
+      Color.new role:, oklch: [l.clamp(0.0, 1.0), [0.0, c].max, h]
+    end
+
+    def rgb_shift(*ds)
+      Color.new role:, rgb: apply_deltas(rgb, ds).map{ it.clamp(0, 255).round }
+    end
+
     def == x
       case x
       in Color   then sgr == x.sgr

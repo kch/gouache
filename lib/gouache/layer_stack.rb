@@ -23,7 +23,10 @@ class Gouache
       self << top.overlay(layer)
       top.extend LayerTags
       top.tag = tag
-      layer&.effects&.each{ it.(LayerProxy.new(top), LayerProxy.new(under)) }
+      layer&.effects&.each do
+        it.arity in 1..2 or raise ArgumentError
+        it.(*[top, under].take(it.arity).map{ LayerProxy.new it })
+      end
       top.freeze
       top.diff(under)
     end

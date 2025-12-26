@@ -56,6 +56,8 @@ class Gouache
     strikeout:           9,
     strikethrough:       9,
     intensity_off:      22, # dim+bold
+    dim_off:            ->{ it.dim = false },
+    bold_off:           ->{ it.bold = false },
     italic_off:         23,
     underlines_off:     24, # under+double
     blink_off:          25,

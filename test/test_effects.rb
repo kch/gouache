@@ -250,4 +250,68 @@ class TestEffects < Minitest::Test
     assert_equal expected, result
   end
 
+  def test_effect_arity_constraints
+    # Effects with wrong arity should raise ArgumentError
+    zero_arity_effect = proc { "no args" }
+    three_arity_effect = proc { |top, under, extra| "too many args" }
+
+    layer_zero = Gouache::Layer.from(zero_arity_effect, 1)
+    layer_three = Gouache::Layer.from(three_arity_effect, 1)
+
+    assert_raises(ArgumentError) { @stack.diffpush(layer_zero) }
+    assert_raises(ArgumentError) { @stack.diffpush(layer_three) }
+  end
+
+  def test_effect_valid_arity_one
+    # Effects with arity 1 should work (only top layer)
+    call_count = 0
+    one_arity_effect = proc { |top| call_count += 1; top.bold = true }
+
+    layer = Gouache::Layer.from(one_arity_effect, 31)
+    @stack.diffpush(layer)
+
+    assert_equal 1, call_count
+    assert_equal 1, @stack.top[9]  # bold was set
+  end
+
+  def test_effect_valid_arity_two
+    # Effects with arity 2 should work (top and under layers)
+    call_count = 0
+    two_arity_effect = proc { |top, under| call_count += 1; top.italic = true }
+
+    layer = Gouache::Layer.from(two_arity_effect, 32)
+    @stack.diffpush(layer)
+
+    assert_equal 1, call_count
+    assert_equal 3, @stack.top[2]  # italic was set
+  end
+
+  def test_base_effects_dim_off
+    # Test dim_off effect
+    result = Gouache[:bold, :dim, "text", :dim_off, "more"]
+    assert_equal "\e[1;2mtext\e[22;1mmore\e[0m", result
+  end
+
+  def test_base_effects_bold_off
+    # Test bold_off effect
+    result = Gouache[:bold, :dim, "text", :bold_off, "more"]
+    assert_equal "\e[1;2mtext\e[22;2mmore\e[0m", result
+  end
+
+  def test_base_effects_combined_sequence
+    # Test the example sequence from the diff
+    result = Gouache[:bold, :dim, "start", :dim_off, "middle", :bold_off, "end"]
+    assert_equal "\e[1;2mstart\e[22;1mmiddle\e[22mend\e[0m", result
+  end
+
+  def test_base_effects_with_other_styles
+    # Test base effects interact properly with other styles
+    result = Gouache[:red, :bold, :dim, "start", :dim_off, :italic, "middle", :bold_off, "end"]
+    assert result.include?("start")
+    assert result.include?("middle")
+    assert result.include?("end")
+    # Should contain proper SGR sequences for transitions
+    assert result.include?("\e["), "Should contain escape sequences"
+  end
+
 end

@@ -807,4 +807,14 @@ class TestColor < Minitest::Test
     assert_equal 196, bg_complex._256         # preserves 256-color
   end
 
+  def test_to_i_method_extracts_sgr_prefix
+    # to_i should extract the numeric prefix from SGR sequences
+    bg_color = Gouache::Color.new(sgr: "48;5;123")
+    assert_equal 48, bg_color.to_i
+
+    # Also test with foreground 256-color for comparison
+    fg_color = Gouache::Color.new(sgr: "38;5;123")
+    assert_equal 38, fg_color.to_i
+  end
+
 end

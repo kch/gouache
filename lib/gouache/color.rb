@@ -40,6 +40,12 @@ class Gouache
       raise ArgumentError, kva.inspect unless @role in ROLE | nil
     end
 
+    def self.maybe_color(sgr, &b)
+      return sgr unless sgr in RU_BASIC | RX_BASIC | RX_256 | RX_RGB | Color
+      color = Color === sgr ? sgr : Color.sgr(sgr)
+      color.then(&(b||:itself))
+    end
+
     private_class_method def self.parse_rgb(args)
       case args
       in [ I8 => r, I8 => g, I8 => b ] then [r,g,b]

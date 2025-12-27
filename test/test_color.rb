@@ -1297,5 +1297,123 @@ class TestColor < Minitest::Test
     assert_raises(ArgumentError) { color.rgb_shift(0, 0, 0, 0, 0) }   # too many
   end
 
+  def test_maybe_color_class_method
+    # Test RU_BASIC values (should convert to Color objects)
+    result = Gouache::Color.maybe_color(39)
+    assert_instance_of Gouache::Color, result
+    assert_equal 39, result.basic
+    assert_equal 38, result.role
+
+    result = Gouache::Color.maybe_color(49)
+    assert_instance_of Gouache::Color, result
+    assert_equal 49, result.basic
+    assert_equal 48, result.role
+
+    result = Gouache::Color.maybe_color(59)
+    assert_instance_of Gouache::Color, result
+    assert_equal 59, result.basic
+    assert_equal 58, result.role
+
+    # Test basic color ranges
+    result = Gouache::Color.maybe_color(31)  # red
+    assert_instance_of Gouache::Color, result
+    assert_equal 31, result.basic
+
+    result = Gouache::Color.maybe_color(91)  # bright red
+    assert_instance_of Gouache::Color, result
+    assert_equal 91, result.basic
+
+    # Test RX_BASIC string values (should convert to Color objects)
+    result = Gouache::Color.maybe_color("39")
+    assert_instance_of Gouache::Color, result
+    assert_equal 39, result.basic
+
+    result = Gouache::Color.maybe_color("49")
+    assert_instance_of Gouache::Color, result
+    assert_equal 49, result.basic
+
+    result = Gouache::Color.maybe_color("59")
+    assert_instance_of Gouache::Color, result
+    assert_equal 59, result.basic
+
+    # Test RX_256 patterns (should convert to Color objects)
+    result = Gouache::Color.maybe_color("38;5;196")
+    assert_instance_of Gouache::Color, result
+    assert_equal 196, result._256
+    assert_equal 38, result.role
+
+    result = Gouache::Color.maybe_color("58;5;123")
+    assert_instance_of Gouache::Color, result
+    assert_equal 123, result._256
+    assert_equal 58, result.role
+
+    # Test RX_RGB patterns (should convert to Color objects)
+    result = Gouache::Color.maybe_color("38;2;255;128;64")
+    assert_instance_of Gouache::Color, result
+    assert_equal [255, 128, 64], result.rgb
+    assert_equal 38, result.role
+
+    result = Gouache::Color.maybe_color("58;2;100;200;50")
+    assert_instance_of Gouache::Color, result
+    assert_equal [100, 200, 50], result.rgb
+    assert_equal 58, result.role
+
+    # Test non-matching values (should return unchanged)
+    result = Gouache::Color.maybe_color(1)  # bold - not a color
+    assert_equal 1, result
+    refute_instance_of Gouache::Color, result
+
+    result = Gouache::Color.maybe_color(22)  # normal intensity - not a color
+    assert_equal 22, result
+    refute_instance_of Gouache::Color, result
+
+    result = Gouache::Color.maybe_color(58)  # incomplete underline color
+    assert_equal 58, result
+    refute_instance_of Gouache::Color, result
+
+    result = Gouache::Color.maybe_color("invalid")
+    assert_equal "invalid", result
+    refute_instance_of Gouache::Color, result
+
+    # Test Color objects (should return unchanged)
+    color_obj = Gouache::Color.rgb(255, 0, 0)
+    result = Gouache::Color.maybe_color(color_obj)
+    assert_same color_obj, result
+  end
+
+  def test_maybe_color_with_block_option
+    # Test block is applied to converted Color objects
+    result = Gouache::Color.maybe_color(31) { |color| color.basic }
+    assert_equal 31, result
+
+    result = Gouache::Color.maybe_color("38;5;196") { |color| color._256 }
+    assert_equal 196, result
+
+    result = Gouache::Color.maybe_color("38;2;255;128;64") { |color| color.rgb }
+    assert_equal [255, 128, 64], result
+
+    # Test block with SGR 59
+    result = Gouache::Color.maybe_color(59) { |color| [color.role, color.basic] }
+    assert_equal [58, 59], result
+
+    # Test block is NOT applied to non-matching values
+    result = Gouache::Color.maybe_color(1) { |x| x * 10 }
+    assert_equal 1, result
+
+    result = Gouache::Color.maybe_color("invalid") { |x| x.upcase }
+    assert_equal "invalid", result
+
+    # Test block with method chaining
+    result = Gouache::Color.maybe_color("48;2;100;200;50") { |color| color.change_role(38) }
+    assert_instance_of Gouache::Color, result
+    assert_equal 38, result.role
+    assert_equal [100, 200, 50], result.rgb
+
+    # Test block that returns modified values
+    result = Gouache::Color.maybe_color(31) { |color| color.rgb.sum }
+    assert_instance_of Integer, result
+    assert_operator result, :>, 0
+  end
+
 
 end

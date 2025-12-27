@@ -30,6 +30,7 @@ class Gouache
     on_cyan:            46,
     on_white:           47,
     on_default:         49,
+    over_default:       59,
     on_black!:         100,
     on_red!:           101,
     on_green!:         102,

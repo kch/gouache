@@ -868,15 +868,19 @@ class TestStylesheet < Minitest::Test
   end
 
   def test_compute_decl_ru_basic_case
-    # Test various RU_BASIC ranges: 39, 49, 30..37, 40..47, 90..97, 100..107
+    # Test various RU_BASIC ranges: 39, 49, 59, 30..37, 40..47, 90..97, 100..107
 
-    # Single values: 39 (default fg), 49 (default bg)
+    # Single values: 39 (default fg), 49 (default bg), 59 (default underline color)
     result = @ss.send(:compute_decl, 39)
     expected = Gouache::Layer.from(Gouache::Color.sgr(39))
     assert_equal expected, result
 
     result = @ss.send(:compute_decl, 49)
     expected = Gouache::Layer.from(Gouache::Color.sgr(49))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, 59)
+    expected = Gouache::Layer.from(Gouache::Color.sgr(59))
     assert_equal expected, result
 
     # 30..37 range (standard fg colors)
@@ -907,11 +911,19 @@ class TestStylesheet < Minitest::Test
   def test_compute_decl_rx_basic_case
     # Test RX_BASIC pattern: string versions of basic SGR codes
     # RX_BASIC matches /\A(?:3|4|9|10)[0-7]\z/ - colors 30-37, 40-47, 90-97, 100-107
-    # Plus individual values 39, 49
+    # Plus individual values 39, 49, 59
 
-    # Default colors (39, 49)
+    # Default colors (39, 49, 59)
     result = @ss.send(:compute_decl, "39")
     expected = Gouache::Layer.from(Gouache::Color.sgr("39"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "49")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("49"))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "59")
+    expected = Gouache::Layer.from(Gouache::Color.sgr("59"))
     assert_equal expected, result
 
     result = @ss.send(:compute_decl, "49")
@@ -986,9 +998,9 @@ class TestStylesheet < Minitest::Test
   end
 
   def test_compute_decl_ru_sgr_nc_case
-    # Test RU_SGR_NC: valid SGR codes (0..107) excluding RU_BASIC, 38, 48
-    # RU_SGR_NC = RangeExclusion.new 0..107, RU_BASIC, 38, 48
-    # Excludes: 39, 49, 30..37, 40..47, 90..97, 100..107, 38, 48
+    # Test RU_SGR_NC: valid SGR codes (0..107) excluding RU_BASIC, 38, 48, 58
+    # RU_SGR_NC = RangeExclusion.new 0..107, RU_BASIC, 38, 48, 58
+    # Excludes: 39, 49, 59, 30..37, 40..47, 90..97, 100..107, 38, 48, 58
 
     # Valid non-color SGR codes that should return the integer directly
     result = @ss.send(:compute_decl, 0)   # reset - replaces with BASE layer
@@ -1024,6 +1036,12 @@ class TestStylesheet < Minitest::Test
 
     result = @ss.send(:compute_decl, 24)  # no underline
     assert_equal Gouache::Layer.from(24), result
+
+    # Test that SGR 58 is excluded from RU_SGR_NC (incomplete sequence should fail)
+    # SGR 58 alone is invalid - it requires color specification like 58;5;n or 58;2;r;g;b
+    assert_raises(NoMatchingPatternError, "SGR 58 without color spec should not match any pattern") do
+      @ss.send(:compute_decl, 58)
+    end
 
     # Test weirder numbers in RU_SGR_NC range - unknown codes become all-nil layers
     result = @ss.send(:compute_decl, 99)  # unknown SGR code

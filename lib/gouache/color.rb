@@ -16,7 +16,7 @@ class Gouache
     I8 = 0..255  # 8bit int range, for 256 colors and rgb channels
     IC = 0..5    # 216 color cube channel range
     D8       = / 1?\d?\d | 2[0-4]\d | 25[0-5]               /x   # 0..255 string
-    RX_BASIC = / (?: 3|4|9|10 ) [0-7] | [34]9               /x.w # sgr basic ranges
+    RX_BASIC = / (?: 3|4|9|10 ) [0-7] | [345]9              /x.w # sgr basic ranges
     RX_256   = / ([345]8) ; 5 ; (#{D8})                     /x.w # sgr 256 color
     RX_RGB   = / ([345]8) ; 2 ; (#{D8}) ; (#{D8}) ; (#{D8}) /x.w # sgr truecolor
     RX_HEX   = / \#? (\h\h) (\h\h) (\h\h)                   /x.w # hex syntax for truecolor
@@ -24,7 +24,7 @@ class Gouache
     def initialize(**kva)
       # very unforgiving as public use
       case kva
-      in sgr: 39 | 49 | 30..37 | 40..47 | 90..97 | 100..107 => n then @sgr_basic = n
+      in sgr: 39 | 49 | 59 | 30..37 | 40..47 | 90..97 | 100..107 => n then @sgr_basic = n
       in sgr: RX_BASIC => s                                      then @sgr_basic = s.to_i
       in sgr: RX_256   => s                                      then @sgr = s; @role, @_256 = $~[1..].map(&:to_i)
       in sgr: RX_RGB   => s                                      then @sgr = s; @role, *@rgb = $~[1..].map(&:to_i)
@@ -71,6 +71,7 @@ class Gouache
       @role || case @sgr_basic
       in /\A38;/ | 39 | 30..37 | 90..97   then FG
       in /\A48;/ | 49 | 40..47 | 100..107 then BG
+      in /\A58;/ | 59                     then UL
       end
     end
 
@@ -80,7 +81,7 @@ class Gouache
       when @_256  then Term.colors[@_256]
       when (n = @sgr_basic)
         case n
-        in 39       then Term.fg_color                # fg default
+        in 39 | 59  then Term.fg_color                # fg default, underline default color
         in 49       then Term.bg_color                # bg default
         in 30..37   then Term.colors[n - 30]          # fg basic color
         in 40..47   then Term.colors[n - 30 - 10]     # bg basic color
@@ -106,7 +107,7 @@ class Gouache
     def _256 = @_256 || Term.nearest256(rgb)
 
     def basic
-      return nil if role == UL
+      return 59 if role == UL
       return @sgr_basic if @sgr_basic
       i = Term.nearest16(rgb)     # get the nearest to rgb
       x =  30 + i                 # go to 30 range for system colors
@@ -121,7 +122,7 @@ class Gouache
       case [fallback, role]
       in :truecolor, _ then sgr
       in :_256, _      then (!@_256 && !@rgb && !@okkch && @sgr_basic) || [role, 5, @_256 || _256]*?;
-      in :basic, UL    then [role, 5, Term.nearest16(rgb)]*?;
+      in :basic, UL    then @sgr_basic || [role, 5, Term.nearest16(rgb)]*?;
       in :basic, _     then basic
       end
     end
@@ -131,8 +132,9 @@ class Gouache
     def change_role(new_role)
       return self unless new_role != role
       sgr_basic = @sgr_basic + { FG => -10, BG => 10 }[new_role] if @sgr_basic && new_role != UL
+      sgr_basic = UL if @sgr_basic in FG | UL && new_role == UL
       rgb_ = @rgb
-      rgb_ = rgb if new_role == UL && ![@_256, @rgb, @oklch].any?
+      rgb_ = rgb if new_role == UL && ![@_256, @rgb, @oklch].any? && sgr_basic != UL
       Color.new __private: [new_role, sgr_basic, @_256, rgb_, @oklch]
     end
 

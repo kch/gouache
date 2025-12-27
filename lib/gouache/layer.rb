@@ -42,7 +42,12 @@ class Gouache
     def RANGES.for(x) = values.filter_map{|r| r.index if r.member? x }.then{ it if it.any? }
     RANGES.freeze
 
-    BASE = new(RANGES.values.map(&:off).tap{ it[0,2] = it[0,2].map{ Color.sgr it }}).freeze
+    BASE = new(RANGES.values.map(&:off).tap do |base|
+      %i[ fg bg underline_color ].each do |k|
+        i = RANGES[k].index
+        base[i] = Color.sgr base[i]
+      end
+    end).freeze
 
     # transforms xs into a valid array of sgr codes
     # special handling for dim/bold:

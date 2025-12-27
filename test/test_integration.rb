@@ -931,6 +931,27 @@ class TestIntegration < Minitest::Test
     wrapped_plain = Gouache.wrap(plain)
     assert_equal plain, wrapped_plain  # Should not wrap plain text
   end
+
+  def test_sgr_59_over_default_integration
+    # Test SGR 59 (over_default) integration with enabled Gouache
+    go = Gouache.new(enabled: true, set_ul_color: @C.over_rgb(255, 0, 255))
+
+    # Test SGR 59 with Color.sgr constructor
+    ul_default = @C.sgr(59)
+    assert_equal 58, ul_default.role, "SGR 59 should have UL role"
+    assert_equal 59, ul_default.basic, "SGR 59 should return 59 as basic"
+
+    # Test SGR 59 in realistic nested structure where it actually appears
+    result = go[:underline, :set_ul_color, 'text with ul color', [:over_default, 'nested without ul'], 'back with ul']
+
+    assert_includes result, "\e[4;58;2;255;0;255m", "Should contain underline and ul color"
+    assert_includes result, "\e[59m", "Should contain SGR 59 reset"
+    assert_includes result, "\e[58;2;255;0;255m", "Should restore ul color after reset"
+    assert_includes result, "text with ul color", "Should contain first text"
+    assert_includes result, "nested without ul", "Should contain reset text"
+    assert_includes result, "back with ul", "Should contain final text"
+  end
+
 end
 
 class TestIntegrationWithRefinement < Minitest::Test

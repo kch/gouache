@@ -344,8 +344,10 @@ class TestLayer < Minitest::Test
 
     assert_equal 22, base[Gouache::Layer::RANGES[:dim].index]
 
-    # underline_color position should contain integer reset value
-    assert_equal 59, base[Gouache::Layer::RANGES[:underline_color].index]  # underline color reset
+    # underline_color position should contain Color object
+    assert_kind_of Gouache::Color, base[Gouache::Layer::RANGES[:underline_color].index]  # underline color reset
+    assert_equal 59, base[Gouache::Layer::RANGES[:underline_color].index].basic
+    assert_equal 58, base[Gouache::Layer::RANGES[:underline_color].index].role
 
     # Other positions should contain integers
     assert_equal 23, base[Gouache::Layer::RANGES[:italic].index]  # italic reset

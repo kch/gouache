@@ -233,6 +233,10 @@ class TestMain < Minitest::Test
     result = Gouache.scan_sgr("58;5;196")
     assert_equal ["58;5;196"], result
 
+    # Basic SGR 59 (underline color reset/default)
+    result = Gouache.scan_sgr("59")
+    assert_equal [59], result
+
     # 24-bit RGB sequences
     result = Gouache.scan_sgr("38;2;255;128;64")
     assert_equal ["38;2;255;128;64"], result
@@ -253,6 +257,10 @@ class TestMain < Minitest::Test
 
     result = Gouache.scan_sgr("38;2;255;0;0;58;5;46;1")
     assert_equal ["38;2;255;0;0", "58;5;46", 1], result
+
+    # Mixed with SGR 59
+    result = Gouache.scan_sgr("1;59;31")
+    assert_equal [1, 59, 31], result
 
     # Edge cases - boundary values
     result = Gouache.scan_sgr("38;5;0")
@@ -330,6 +338,9 @@ class TestMain < Minitest::Test
 
     result = Gouache.scan_sgr("\e[58;2;255;128;64m")
     assert_equal ["58;2;255;128;64"], result
+
+    result = Gouache.scan_sgr("\e[59m")
+    assert_equal [59], result
 
     result = Gouache.scan_sgr("\e[0;38;2;255;0;0;48;5;46;1m")
     assert_equal [0, "38;2;255;0;0", "48;5;46", 1], result

@@ -25,9 +25,9 @@ class Gouache
     RX_INT       = /(?:#{D8})/.w
     RX_SGR       = /[\d;]+/.w
     RX_SEL       = /[a-z]\w*[?!]?/i.w
-    RU_BASIC     = RangeUnion.new 39, 49, 30..37, 40..47, 90..97, 100..107 # sgr basic ranges
-    RX_BASIC     = / (?: 3|4|9|10 ) [0-7] | [34]9  /x.w                    # same as above but for strings
-    RU_SGR_NC    = RangeExclusion.new 0..107, RU_BASIC, 38, 48             # no-color, valid SGRs
+    RU_BASIC     = RangeUnion.new 39, 49, 59, 30..37, 40..47, 90..97, 100..107 # sgr basic ranges
+    RX_BASIC     = / (?: 3|4|9|10 ) [0-7] | [345]9  /x.w                       # same as above but for strings
+    RU_SGR_NC    = RangeExclusion.new 0..107, RU_BASIC, 38, 48, 58             # no-color, valid SGRs
     RX_EXT_COLOR = /([345]8) ; (?: 5; (#{D8}) | 2; (#{D8}) ; (#{D8}) ; (#{D8}) )/x.w
     RX_FN_CUBE   = /(on|over)?#[0-5]{3}/.w
     RX_FN_HEX    = /(on|over)?#(\h{6})/.w

@@ -238,9 +238,13 @@ class TestColor < Minitest::Test
     assert_operator basic, :>=, 30
     assert_operator basic, :<=, 107
 
-    # Test underline colors return nil for basic
+    # Test underline colors return 59 for basic (over_default)
     underline_color = Gouache::Color.over_rgb(255, 0, 0)
-    assert_nil underline_color.basic
+    assert_equal 59, underline_color.basic
+
+    # Test SGR 59 basic handling
+    color59 = Gouache::Color.sgr(59)
+    assert_equal 59, color59.basic
   end
 
   def test_to_i_method
@@ -393,6 +397,11 @@ class TestColor < Minitest::Test
       color_index = result.match(/58;5;(\d+)/)[1].to_i
       assert_equal expected_index, color_index, "RGB #{rgb} #{description}"
     end
+
+    # Test over_default basic fallback returns "59"
+    color_default = Gouache::Color.sgr(59)
+    result = color_default.to_sgr(fallback: :basic)
+    assert_equal 59, result, "SGR 59 should fallback to basic as '59'"
   end
 
   # Cross-constructor compatibility tests
@@ -547,6 +556,11 @@ class TestColor < Minitest::Test
 
     color = Gouache::Color.new(sgr: "38;2;255;128;64")
     assert_equal [255, 128, 64], color.rgb
+
+    # Test SGR 59 (over_default)
+    color = Gouache::Color.new(sgr: 59)
+    assert_equal 59, color.sgr
+    assert_equal 58, color.role
 
     # Test role + rgb
     color = Gouache::Color.new(role: 38, rgb: [255, 0, 0])
@@ -827,6 +841,16 @@ class TestColor < Minitest::Test
     assert_equal 49, color49_str.sgr
     assert_equal color49.sgr, color49_str.sgr
 
+    # Test 59 (default underline color) - integer and string
+    color59 = Gouache::Color.sgr(59)
+    assert_equal 59, color59.sgr
+    assert_equal 58, color59.role
+
+    color59_str = Gouache::Color.sgr("59")
+    assert_equal 59, color59_str.sgr
+    assert_equal 58, color59_str.role
+    assert_equal color59.sgr, color59_str.sgr
+
     # Test 30-37 (normal fg colors)
     (30..37).each do |n|
       color = Gouache::Color.sgr(n)
@@ -1000,7 +1024,7 @@ class TestColor < Minitest::Test
     ul_basic = fg_basic.change_role(58)       # change to underline
 
     assert_equal 58, ul_basic.role
-    assert_nil ul_basic.basic                 # underline has no basic SGR
+    assert_equal 59, ul_basic.basic           # underline returns 59 (over_default)
     assert_equal [205, 0, 0], ul_basic.rgb    # RGB calculated from basic
 
     # Test changing RGB color to underline
@@ -1009,7 +1033,7 @@ class TestColor < Minitest::Test
 
     assert_equal 58, ul_rgb.role
     assert_equal [100, 150, 200], ul_rgb.rgb
-    assert_nil ul_rgb.basic
+    assert_equal 59, ul_rgb.basic
 
     # Test changing 256-color to underline
     color_256 = Gouache::Color.sgr("38;5;196")
@@ -1017,7 +1041,15 @@ class TestColor < Minitest::Test
 
     assert_equal 58, ul_256.role
     assert_equal 196, ul_256._256
-    assert_nil ul_256.basic
+    assert_equal 59, ul_256.basic
+
+    # Test UL-to-UL change_role edge case (sgr_basic = UL logic)
+    ul_color = Gouache::Color.sgr(59)         # underline default color
+    ul_same = ul_color.change_role(58)        # change from UL to UL
+
+    assert_equal 58, ul_same.role
+    assert_equal 59, ul_same.basic
+    assert_same ul_color, ul_same             # should return self when no change needed
   end
 
   def test_to_i_method_extracts_sgr_prefix

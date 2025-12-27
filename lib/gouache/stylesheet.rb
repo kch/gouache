@@ -20,15 +20,16 @@ class Gouache
     def merge(*styles) = self.class.new(styles.inject(&:merge), base: self)
 
     using RegexpWrap  # enable .w below. wrap it in \A\z
-    D8           = /1?\d?\d|2[0-4]\d|25[0-5]/
+    D8           = Color::D8
     D24          = /1?\d|2[0-3]/
     RX_INT       = /(?:#{D8})/.w
     RX_SGR       = /[\d;]+/.w
     RX_SEL       = /[a-z]\w*[?!]?/i.w
-    RU_BASIC     = RangeUnion.new 39, 49, 59, 30..37, 40..47, 90..97, 100..107 # sgr basic ranges
-    RX_BASIC     = / (?: 3|4|9|10 ) [0-7] | [345]9  /x.w                       # same as above but for strings
+    RU_BASIC     = Color::RU_BASIC
+    RX_BASIC     = Color::RX_BASIC
+    RX_256       = Color::RX_256
+    RX_RGB       = Color::RX_RGB
     RU_SGR_NC    = RangeExclusion.new 0..107, RU_BASIC, 38, 48, 58             # no-color, valid SGRs
-    RX_EXT_COLOR = /([345]8) ; (?: 5; (#{D8}) | 2; (#{D8}) ; (#{D8}) ; (#{D8}) )/x.w
     RX_FN_CUBE   = /(on|over)?#[0-5]{3}/.w
     RX_FN_HEX    = /(on|over)?#(\h{6})/.w
     RX_FN_RGB    = /(on_|over_)? rgb  \(\s* (#{D8})  \s*,\s* (#{D8}) \s*,\s* (#{D8}) \s*\)/x.w
@@ -51,7 +52,8 @@ class Gouache
                             .then{|cs,rs| [*Color.merge(*cs).flatten.compact, *rs] }
       in RU_BASIC     then Color.sgr x
       in RX_BASIC     then Color.sgr x
-      in RX_EXT_COLOR then Color.sgr x
+      in RX_256       then Color.sgr x
+      in RX_RGB       then Color.sgr x
       in RX_FN_HEX    then Color.new role: role[], rgb: $2
       in RX_FN_RGB    then Color.new role: role[], rgb: $~[2..].map(&:to_i)
       in RX_FN_CUBE   then Color.new role: role[], cube: x.scan(/\d/).map(&:to_i)

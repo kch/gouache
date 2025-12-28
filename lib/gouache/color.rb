@@ -78,9 +78,9 @@ class Gouache
 
     def role
       @role || case @sgr_basic
-      in /\A38;/ | 39 | 30..37 | 90..97   then FG
-      in /\A48;/ | 49 | 40..47 | 100..107 then BG
-      in /\A58;/ | 59                     then UL
+      in 39 | 30..37 | 90..97   then FG
+      in 49 | 40..47 | 100..107 then BG
+      in 59                     then UL
       end
     end
 

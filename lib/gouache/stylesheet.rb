@@ -29,7 +29,7 @@ class Gouache
     RX_BASIC     = Color::RX_BASIC
     RX_256       = Color::RX_256
     RX_RGB       = Color::RX_RGB
-    RU_SGR_NC    = RangeExclusion.new 0..107, RU_BASIC, 38, 48, 58             # no-color, valid SGRs
+    RU_SGR_NC    = RangeExclusion.new 0..107, RU_BASIC, 38, 48, 58 # non-color, likely valid SGRs
     RX_FN_CUBE   = /(on|over)?#[0-5]{3}/.w
     RX_FN_HEX    = /(on|over)?#(\h{6})/.w
     RX_FN_RGB    = /(on_|over_)? rgb  \(\s* (#{D8})  \s*,\s* (#{D8}) \s*,\s* (#{D8}) \s*\)/x.w

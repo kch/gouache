@@ -8,8 +8,8 @@ class Gouache
     extend self
 
     using RegexpWrap
-    REL_CHROMA       = / (        1(?:\.0+)? | 0 | 0? \. [0-9]+ )? max /x.w
-    REL_CHROMA_DELTA = / ( -? (?: 1(?:\.0+)? | 0 | 0? \. [0-9]+ )) max /x.w
+    REL_CHROMA       = / (        1(?:\.0+)? | 0 | 0? \. \d+ )? max /x.w
+    REL_CHROMA_DELTA = / ( -? (?: 1(?:\.0+)? | 0 | 0? \. \d+ )) max /x.w
 
     # constants
 

@@ -50,7 +50,7 @@ Minitest::Reporters.use!(
         puts ms.map{|m,fn| "  - [ %-#{d}s ]  %s" % [fn, m] }
         n
       end.each do |n|
-        puts "bin/test #{n}"
+        puts "bin/test #{File.basename(n, '.rb')}"
       end
     end
   end.new

@@ -22,6 +22,7 @@ class Gouache
     using RegexpWrap  # enable .w below. wrap it in \A\z
     D8           = Color::D8
     D24          = /1?\d|2[0-3]/
+    NNF          = /\.\d+|\d+(?:\.\d+)?/ # non-negative float
     RX_INT       = /(?:#{D8})/.w
     RX_SGR       = /[\d;]+/.w
     RX_SEL       = /[a-z]\w*[?!]?/i.w
@@ -35,6 +36,7 @@ class Gouache
     RX_FN_RGB    = /(on_|over_)? rgb  \(\s* (#{D8})  \s*,\s* (#{D8}) \s*,\s* (#{D8}) \s*\)/x.w
     RX_FN_256    = /(on_|over_)? 256  \(\s* (#{D8})  \s* \)/x.w
     RX_FN_GRAY   = /(on_|over_)? gray \(\s* (#{D24}) \s* \)/x.w
+    RX_FN_OKLCH  = /(on_|over_)? oklch\(\s* (#{NNF}) \s*,\s* (#{NNF}(?:max)?|max) \s*,\s* (#{NNF}) \s*\)/x.w
 
     private def compute_decl(x)
       Layer.from _compute_decl(x)
@@ -59,6 +61,7 @@ class Gouache
       in RX_FN_CUBE   then Color.new role: role[], cube: x.scan(/\d/).map(&:to_i)
       in RX_FN_GRAY   then Color.new role: role[], gray: $2.to_i
       in RX_FN_256    then Color.sgr [role[], 5, $2]*?;
+      in RX_FN_OKLCH  then Color.new role: role[], oklch: $~[2..].map{|s| s =~ /max/ ? s : s.to_f }
       in RU_SGR_NC    then x
       in RX_INT       then _compute_decl(x.to_i)
       in RX_SGR       then Gouache.scan_sgr(x).map{ _compute_decl it }

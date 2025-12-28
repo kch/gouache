@@ -569,6 +569,16 @@ class TestStylesheet < Minitest::Test
       hex_bg3_2:      "on#445",
       hex_bg6_1:      "on#000000",
       hex_bg6_2:      "on#ffffff",
+
+      # OKLCH variants
+      oklch1:         "oklch(0.5, 0.1, 30)",
+      oklch2:         "oklch(0.8, 0.2, 180)",
+      oklch_bg1:      "on_oklch(0.3, 0.05, 90)",
+      oklch_bg2:      "on_oklch(0.7, 0.15, 270)",
+      oklch_ul1:      "over_oklch(0.6, 0.1, 45)",
+      oklch_ul2:      "over_oklch(0.4, 0.08, 315)",
+      oklch_rel1:     "oklch(0.5, 0.5max, 60)",
+      oklch_rel2:     "oklch(0.7, max, 120)",
     }
 
     ss = Gouache::Stylesheet.new(styles, base: nil)
@@ -610,6 +620,16 @@ class TestStylesheet < Minitest::Test
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;5;189"), ss.layer_map[:hex_bg3_2]       # on#445 = 4*36+4*6+5+16
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;0;0;0"), ss.layer_map[:hex_bg6_1]     # on#000000
     assert_equal Gouache::Layer.from(Gouache::Color.sgr "48;2;255;255;255"), ss.layer_map[:hex_bg6_2] # on#ffffff
+
+    # OKLCH functions should create proper Color objects (converted to SGR for comparison)
+    assert_equal Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.5, 0.1, 30])), ss.layer_map[:oklch1]
+    assert_equal Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.8, 0.2, 180])), ss.layer_map[:oklch2]
+    assert_equal Gouache::Layer.from(Gouache::Color.new(role: 48, oklch: [0.3, 0.05, 90])), ss.layer_map[:oklch_bg1]
+    assert_equal Gouache::Layer.from(Gouache::Color.new(role: 48, oklch: [0.7, 0.15, 270])), ss.layer_map[:oklch_bg2]
+    assert_equal Gouache::Layer.from(Gouache::Color.new(role: 58, oklch: [0.6, 0.1, 45])), ss.layer_map[:oklch_ul1]
+    assert_equal Gouache::Layer.from(Gouache::Color.new(role: 58, oklch: [0.4, 0.08, 315])), ss.layer_map[:oklch_ul2]
+    assert_equal Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.5, "0.5max", 60])), ss.layer_map[:oklch_rel1]
+    assert_equal Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.7, "max", 120])), ss.layer_map[:oklch_rel2]
   end
 
   def test_boundary_conditions_comprehensive
@@ -1330,6 +1350,86 @@ class TestStylesheet < Minitest::Test
 
     assert_raises(NoMatchingPatternError) {
       @ss.send(:compute_decl, "256(999)")  # > 255
+    }
+
+    # RX_FN_OKLCH: /(on_|over_)? oklch\(\s* (NNF) \s*,\s* (NNF(?:max)?|max) \s*,\s* (NNF) \s*\)/
+    result = @ss.send(:compute_decl, "oklch(0.7, 0.15, 180)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.7, 0.15, 180]))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "on_oklch(0.5, 0.1, 30)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 48, oklch: [0.5, 0.1, 30]))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "over_oklch(0.8, 0.2, 90)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 58, oklch: [0.8, 0.2, 90]))
+    assert_equal expected, result
+
+    # Test relative chroma with "max" suffix
+    result = @ss.send(:compute_decl, "oklch(0.6, 0.5max, 45)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.6, "0.5max", 45]))
+    assert_equal expected, result
+
+    # Test plain "max"
+    result = @ss.send(:compute_decl, "oklch(0.5, max, 120)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.5, "max", 120]))
+    assert_equal expected, result
+
+    # Test with whitespace
+    result = @ss.send(:compute_decl, "oklch( 0.7 , 0.1max , 240 )")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.7, "0.1max", 240]))
+    assert_equal expected, result
+  end
+
+  def test_compute_decl_oklch_function_edge_cases
+    # Test integer lightness values (should work as floats)
+    result = @ss.send(:compute_decl, "oklch(1, 0.1, 0)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [1.0, 0.1, 0.0]))
+    assert_equal expected, result
+
+    # Test zero values
+    result = @ss.send(:compute_decl, "oklch(0, 0, 0)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.0, 0.0, 0.0]))
+    assert_equal expected, result
+
+    # Test decimal-only chroma with max
+    result = @ss.send(:compute_decl, "oklch(0.5, .8max, 180)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.5, ".8max", 180.0]))
+    assert_equal expected, result
+
+    # Test large hue values (should work)
+    result = @ss.send(:compute_decl, "oklch(0.6, 0.1, 359.99)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 38, oklch: [0.6, 0.1, 359.99]))
+    assert_equal expected, result
+
+    # Test all role prefixes with relative chroma
+    result = @ss.send(:compute_decl, "on_oklch(0.4, 0.3max, 270)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 48, oklch: [0.4, "0.3max", 270.0]))
+    assert_equal expected, result
+
+    result = @ss.send(:compute_decl, "over_oklch(0.9, max, 45)")
+    expected = Gouache::Layer.from(Gouache::Color.new(role: 58, oklch: [0.9, "max", 45.0]))
+    assert_equal expected, result
+
+    # Test invalid patterns (should not match OKLCH regex)
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "oklch(-0.1, 0.1, 0)")  # negative lightness
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "oklch(0.5, -0.1max, 0)")  # negative relative chroma
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "oklch(0.5, 0.1maxs, 0)")  # invalid suffix
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "oklch(0.5)")  # missing parameters
+    }
+
+    assert_raises(NoMatchingPatternError) {
+      @ss.send(:compute_decl, "oklch(0.5, 0.1)")  # missing hue
     }
   end
 

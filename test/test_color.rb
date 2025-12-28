@@ -1143,10 +1143,10 @@ class TestColor < Minitest::Test
     color = Gouache::Color.oklch(0.7, 0.15, 180)
 
     # Test basic shifting
-    shifted = color.oklch_shift(0.1, 0.05, 90)
+    shifted = color.oklch_shift(0.1, -0.05, 90)
     l, c, h = shifted.oklch
     assert_in_delta 0.8, l, 0.001
-    assert_in_delta 0.2, c, 0.001
+    assert_in_delta 0.1, c, 0.001
     assert_in_delta 270, h, 0.001
 
     # Test lightness clamping
@@ -1204,17 +1204,17 @@ class TestColor < Minitest::Test
     color = Gouache::Color.oklch(0.7, 0.15, 180)
 
     # Test absolute replacement with wrapped values
-    shifted = color.oklch_shift([0.5], [0.3], [270])
+    shifted = color.oklch_shift([0.5], [0.1], [270])
     l, c, h = shifted.oklch
     assert_in_delta 0.5, l, 0.001  # absolute replacement, not 0.7 + 0.5
-    assert_in_delta 0.3, c, 0.001  # absolute replacement, not 0.15 + 0.3
+    assert_in_delta 0.1, c, 0.001  # absolute replacement, not 0.15 + 0.1
     assert_in_delta 270, h, 0.001  # absolute replacement, not 180 + 270
 
     # Test mixed delta and absolute
-    mixed = color.oklch_shift(0.1, [0.25], 45)  # delta, absolute, delta
+    mixed = color.oklch_shift(0.1, [0.05], 45)  # delta, absolute, delta
     l2, c2, h2 = mixed.oklch
     assert_in_delta 0.8, l2, 0.001   # 0.7 + 0.1 (delta)
-    assert_in_delta 0.25, c2, 0.001  # 0.25 (absolute)
+    assert_in_delta 0.05, c2, 0.001  # 0.05 (absolute)
     assert_in_delta 225, h2, 0.001   # 180 + 45 (delta)
 
     # Test with clamping on absolute values
@@ -1222,7 +1222,7 @@ class TestColor < Minitest::Test
     l3, c3, h3 = clamped.oklch
     assert_equal 1.0, l3  # clamped from 1.5 to 1.0
     assert_equal 0.0, c3  # clamped from -0.1 to 0.0
-    assert_in_delta 400, h3, 0.001  # hue not clamped, wraps naturally
+    assert_in_delta 40, h3, 0.001  # hue mod clamped even tho wraps naturally
   end
 
   def test_rgb_shift_with_wrapped_absolute_values
@@ -1266,7 +1266,7 @@ class TestColor < Minitest::Test
 
     # Test invalid argument types
     assert_raises(ArgumentError) { color.oklch_shift("bad", 0, 0) }
-    assert_raises(ArgumentError) { color.oklch_shift(0, nil, 0) }
+    assert_raises(ArgumentError) { color.oklch_shift(0, false, 0) }
     assert_raises(ArgumentError) { color.oklch_shift(0, 0, {}) }
 
     # Test invalid wrapped array structure

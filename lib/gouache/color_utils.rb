@@ -1,10 +1,15 @@
 # frozen_string_literal: true
 
 require "matrix"
+require_relative "utils"
 
 class Gouache
   module ColorUtils
     extend self
+
+    using RegexpWrap
+    REL_CHROMA       = / (        1(?:\.0+)? | 0 | 0? \. [0-9]+ )? max /x.w
+    REL_CHROMA_DELTA = / ( -? (?: 1(?:\.0+)? | 0 | 0? \. [0-9]+ )) max /x.w
 
     # constants
 
@@ -68,6 +73,24 @@ class Gouache
       end
     end
 
+    def oklch_in_srgb_gamut?(oklch)
+      oklab = oklab_from_oklch oklch
+      lms   = LMS_FROM_OKLAB * Vector[*oklab]
+      lin   = LINEAR_SRGB_FROM_LMS * Vector[*lms.map { it**3 }]
+      lin.all?(0.0..1.0)
+    end
+
+    # max oklch C for l,h in srgb space
+    def cmax(l, h)
+      lo = 0.0
+      hi = 0.4 # OKLCH sRGB upper bound
+      30.times do
+        mid = (lo + hi) / 2
+        oklch_in_srgb_gamut?([l, mid, h]) ? lo = mid : hi = mid
+      end
+      lo
+    end
+
     # conversions
 
     def oklab_from_srgb8(srgb8)
@@ -97,6 +120,118 @@ class Gouache
     def oklch_from_srgb8(srgb8) = oklch_from_oklab oklab_from_srgb8 srgb8
 
     def srgb8_from_oklch(oklch) = srgb8_from_oklab oklab_from_oklch oklch
+
+    # Convert OKLCH with possible relative chroma to absolute OKLCH.
+    #
+    # Arguments:
+    #   l      = lightness ∈ 0.0..1.0
+    #   cr_or_c = chroma value, either:
+    #             - Numeric: absolute chroma ∈ 0.0..
+    #             - "CRmax": relative chroma (CR * cmax at L,H)
+    #                        CR = float in 0.0..1.0, or empty for 1.0
+    #             - "max": equivalent to "1.0max" (maximum chroma)
+    #   h      = hue in degrees
+    #
+    # Returns:
+    #   [L, C, H] with absolute chroma
+    #
+    # Validates that the result is within valid OKLCH bounds.
+    def oklch_from_maybe_relative_chroma((l, cr_or_c, h))
+      cm = cmax(l, h)
+      c = (cr_or_c in REL_CHROMA) ? ($1||1).to_f * cm : cr_or_c
+      [l, c, h] in [0.0..1.0, ^(0.0..cm), Numeric] or raise ArgumentError
+      [l, c, h]
+    end
+
+    # shifts
+
+
+    # Shift an OKLCH color with mixed absolute, delta, and relative-chroma semantics.
+    #
+    # Arguments:
+    #   lch  = [L, C, H]
+    #     L ∈ 0.0..1.0
+    #     C = absolute OKLCH chroma ∈ 0.0..
+    #     H = hue in degrees
+    #
+    #   dlch = [dL, dC, dH]
+    #
+    # Semantics per dlch component:
+    #
+    #   L, H:
+    #     Numeric   → delta (x + d)
+    #     [Numeric] → absolute replace
+    #
+    #   C:
+    #     Numeric   → delta C
+    #     [Numeric] → absolute C
+    #     ["CRmax"] → absolute using relative chroma
+    #                 (CR * Cmax at new L,H)
+    #                 CR = float in 0.0..1.0
+    #     "±CRmax"  → relative chroma delta
+    #                 ( (C / cmax(old L,H)) ± CR ) * cmax(new L,H)
+    #                 CR = float in -1.0..1.0
+    #     nil       → keep relative chroma (same as "0max")
+    #
+    # Relative chroma expresses chroma as a fraction of the maximum in-gamut
+    # chroma at a given lightness and hue, providing a stable 0–1 control that
+    # preserves perceived intensity across lightness and hue changes.
+    #
+    # Behavior:
+    #   - L is clamped to 0.0..1.0
+    #   - H wraps modulo 360
+    #   - C is clamped to 0.0..cmax(L,H)
+    #   - Relative chroma is defined as C / cmax(L,H)
+    #   - Relative chroma operations are gamut-aware (sRGB via OKLab).
+    def oklch_shift(lch, dlch)
+      raise ArgumentError unless lch in [
+        0..1,
+        0.. | REL_CHROMA,
+        Numeric]
+
+      raise ArgumentError unless dlch in [
+        Numeric | [Numeric],
+        Numeric | [Numeric] | REL_CHROMA_DELTA | [REL_CHROMA] | nil,
+        Numeric | [Numeric]]
+
+      l_, c_, h_ = lch.zip(dlch).map do |x, d|
+        case d
+        in Numeric        then x + d
+        in [Numeric => n] then n
+        else nil
+        end
+      end
+
+      l, c, h = lch
+      l_  = l_.clamp(0.0, 1.0)
+      h_  = h_ % 360
+      cm  = cmax(l, h)
+      cm_ = cmax(l_, h_)
+
+      c_ ||= case dlch
+             in [_, [REL_CHROMA] ,_]    then ($1||1).to_f * cm_
+             in [_, REL_CHROMA_DELTA,_] then (c / cm + $1.to_f) * cm_
+             in [_, nil, _]             then (c / cm) * cm_
+             end
+
+      c_ = c_.clamp(0.0, cmax(l_, h_))
+
+      [l_, c_, h_]
+    end
+
+    ABS = 0.0..255.0
+    DELTA_OR_ABS = ->{ it in Numeric | [ABS] }
+    def srgb8_shift(rgb8, drgb)
+      raise ArgumentError unless rgb8 in [ABS, ABS, ABS]
+      raise ArgumentError unless drgb in [DELTA_OR_ABS, DELTA_OR_ABS, DELTA_OR_ABS]
+      rgb8.zip(drgb).map do |x, d|
+        case d
+        in Numeric        then x + d
+        in [Numeric => n] then n
+        end.clamp(0, 255).round
+      end
+    end
+
 
     # distance
 

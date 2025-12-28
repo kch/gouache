@@ -21,6 +21,7 @@ class Gouache
     RX_256   = / ([345]8) ; 5 ; (#{D8})                     /x.w # sgr 256 color
     RX_RGB   = / ([345]8) ; 2 ; (#{D8}) ; (#{D8}) ; (#{D8}) /x.w # sgr truecolor
     RX_HEX   = / \#? (\h\h) (\h\h) (\h\h)                   /x.w # hex syntax for truecolor
+    REL_C    = ColorUtils::REL_CHROMA
 
     def initialize(**kva)
       # very unforgiving as public use
@@ -32,6 +33,7 @@ class Gouache
       in role: ROLE => rl, rgb: [I8, I8, I8] => rgb              then @role = rl; @rgb = rgb
       in role: ROLE => rl, rgb: RX_HEX                           then @role = rl; @rgb = $~[1..].map{it.to_i(16)}
       in role: ROLE => rl, oklch: [0..1, 0.., Numeric] => lch    then @role = rl; @oklch = lch
+      in role: ROLE => rl, oklch: [0..1, REL_C, Numeric] => lch  then @role = rl; @oklch = ColorUtils.oklch_from_maybe_relative_chroma(lch)
       in role: ROLE => rl, gray: 0..23 => gray                   then @role = rl; @_256 = 232 + gray
       in role: ROLE => rl, cube: [IC => r, IC => g, IC => b]     then @role = rl; @_256 = 16 + 36*r + 6*g + b
       in __private: [rl, sgr, _256, rgb, oklch]                  then @role, @sgr_basic, @_256, @rgb, @oklch = rl, sgr, _256, rgb, oklch
@@ -155,19 +157,9 @@ class Gouache
 
     def to_i = sgr.to_i
 
-    def apply_deltas(xs, ds)
-      raise ArgumentError unless ds in [Numeric | [Numeric], Numeric | [Numeric], Numeric | [Numeric]]
-      xs.zip(ds).map{|x,d| (d in [d_]) ? d_ : x + d }
-    end
+    def oklch_shift(*ds) = Color.new role:, oklch: ColorUtils.oklch_shift(oklch, ds)
 
-    def oklch_shift(*ds)
-      l, c, h = apply_deltas(oklch, ds)
-      Color.new role:, oklch: [l.clamp(0.0, 1.0), [0.0, c].max, h]
-    end
-
-    def rgb_shift(*ds)
-      Color.new role:, rgb: apply_deltas(rgb, ds).map{ it.clamp(0, 255).round }
-    end
+    def rgb_shift(*ds) = Color.new role:, rgb: ColorUtils.srgb8_shift(rgb, ds)
 
     def == x
       case x

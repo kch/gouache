@@ -2,6 +2,8 @@
 
 class Gouache
 
+  D8 = / 1?\d?\d | 2[0-4]\d | 25[0-5] /x  # 0..255 string; used in a few places building regexes
+
   BASE_STYLES = {
     reset:              0,
     black:              30,

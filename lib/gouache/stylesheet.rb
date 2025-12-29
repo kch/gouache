@@ -20,7 +20,7 @@ class Gouache
     def merge(*styles) = self.class.new(styles.inject(&:merge), base: self)
 
     using RegexpWrap  # enable .w below. wrap it in \A\z
-    D8           = Color::D8
+    D8           = Gouache::D8  # 0..255 string
     D24          = /1?\d|2[0-3]/
     NNF          = /\.\d+|\d+(?:\.\d+)?/ # non-negative float
     RX_INT       = /(?:#{D8})/.w

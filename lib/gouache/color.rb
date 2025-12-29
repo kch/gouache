@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "color_utils"
+require_relative "base"
 require_relative "term"
 require_relative "utils"
 
@@ -15,9 +16,9 @@ class Gouache
     ROLE = RangeUnion.new FG, BG, UL
     I8 = 0..255  # 8bit int range, for 256 colors and rgb channels
     IC = 0..5    # 216 color cube channel range
+    D8 = Gouache::D8 # 0..255 string
     RU_BASIC = RangeUnion.new 39, 49, 59, 30..37, 40..47, 90..97, 100..107 # sgr basic ranges
     RX_BASIC = / (?: 3|4|9|10 ) [0-7] | [345]9              /x.w # sgr basic ranges as string
-    D8       = / 1?\d?\d | 2[0-4]\d | 25[0-5]               /x   # 0..255 string
     RX_256   = / ([345]8) ; 5 ; (#{D8})                     /x.w # sgr 256 color
     RX_RGB   = / ([345]8) ; 2 ; (#{D8}) ; (#{D8}) ; (#{D8}) /x.w # sgr truecolor
     RX_HEX   = / \#? (\h\h) (\h\h) (\h\h)                   /x.w # hex syntax for truecolor

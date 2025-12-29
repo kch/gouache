@@ -68,7 +68,8 @@ class Gouache
       buf
     end
 
-    OSC_RGB = %r_\e\]\d{1,2}(?:;(\d{1,3}))?;rgb:(\h{2})\h{2}?/(\h{2})\h{2}?/(\h{2})\h{2}?(?:\a|\e\\)_
+    # $1 = color number (for osc 4), $2,3,4 = r,g,b
+    OSC_RGB = %r_\e\] \d{1,2} (?:;(\d{1,3}))? ;rgb: (\h{2})\h{2}? / (\h{2})\h{2}? / (\h{2})\h{2}? (?:\a|\e\\)_x
     def scan_colors(s, len) = s.scan(OSC_RGB).to_h{|k,*rgb| [k&.to_i, rgb.map{ it&.to_i 16 }] }.then{ it.size == len ? it : nil }
     def scan_color(s)  = scan_colors(s, 1).values.first
     def osc(*xs)       = term_seq OSC, xs*?;, ST

@@ -218,6 +218,55 @@ class TestMain < Minitest::Test
     assert_equal result1, result2
   end
 
+  def test_class_repaint_method
+    # Gouache.repaint should re-render wrapped SGR content
+    styled = "\e[31mcontent\e[0m"
+    wrapped = Gouache.wrap(styled)
+    repainted = Gouache.repaint(wrapped)
+    assert_equal styled, repainted
+  end
+
+  def test_class_repaint_when_disabled
+    # Gouache.repaint should unpaint when disabled
+    Gouache.disable
+
+    styled = "\e[31mcontent\e[0m"
+    wrapped = Gouache.wrap(styled)
+    result = Gouache.repaint(wrapped)
+    assert_equal "content", result
+
+    # Restore
+    Gouache.enable
+  end
+
+  def test_class_repaint_complex_wrapped_content
+    # Gouache.repaint should handle complex wrapped SGR sequences
+    complex_sgr = "\e[22;31;1mbold red\e[22;39mplain\e[34mblue\e[0m"
+    wrapped = Gouache.wrap(complex_sgr)
+    repainted = Gouache.repaint(wrapped)
+    assert_equal complex_sgr, repainted
+  end
+
+  def test_class_repaint_plain_text
+    # Gouache.repaint should handle plain text without wrap sequences
+    plain = "plain text"
+    result = Gouache.repaint(plain)
+    assert_equal plain, result
+  end
+
+  def test_class_repaint_partial_wrap_sequences
+    # Gouache.repaint should handle content with mixed wrapped/unwrapped parts
+    styled = "\e[31mred\e[0m"
+    wrapped_part = Gouache.wrap(styled)
+    mixed = "start #{wrapped_part} end"
+
+    # Should re-render the wrapped part but leave plain text alone
+    result = Gouache.repaint(mixed)
+    assert_includes result, "red"
+    assert_includes result, "start"
+    assert_includes result, "end"
+  end
+
   def test_class_scan_sgr_method
     # Basic SGR codes
     result = Gouache.scan_sgr("31;1")

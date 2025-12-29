@@ -6,7 +6,7 @@ $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 $LOAD_PATH.unshift File.expand_path("../test", __dir__)
 
 # janky way to avoid opt parsing
-files, argv = ARGV.map{ [Dir["test/**/*#{it}*.rb"], it] }.partition{ it.first.any? }
+files, argv = ARGV.map{ [Dir["test/**/*#{it}*"].grep(/\.rb$/), it] }.partition{ it.first.any? }
 files = files.map(&:first).flatten
 files = Dir["test/**/*.rb"] if files.empty?
 ARGV.replace(argv.map(&:last))
@@ -19,6 +19,33 @@ $VERBOSE = true if opt! %w[ -w --warnings ]
 if opt! %w[ -c --color ]
   # Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
   Minitest::Reporters.use! Minitest::Reporters::DefaultReporter.new(color: true)
+end
+
+if opt! %w[ -o --order ]
+  module Minitest
+    class Runnable
+      # run test classes in order
+      class << @@runnables
+        def shuffle = itself
+      end
+    end
+
+    class Test
+      @@test_order_list = Hash.new{|h, k| h[k] = [] }
+
+      class << self
+
+        def method_added(name)
+          super
+          @@test_order_list[self] << name.to_s if name.to_s.start_with?("test_")
+        end
+
+        alias_method :runnable_methods_before, :runnable_methods
+        def runnable_methods = @@test_order_list[self] || runnable_methods_before
+
+      end
+    end
+  end
 end
 
 # this reporter prints just the failed test file/methods, and cmd to run each file

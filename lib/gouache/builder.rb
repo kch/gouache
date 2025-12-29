@@ -114,8 +114,6 @@ class Gouache
         @nesting  = 0
       end
 
-      # def call(...) = _build!(nil, ...) # TODO: Do we want this?
-
       def <<(s) = ::Gouache::Builder.emit_content(s, emitter: @emitter)
 
       private def method_missing(m, ...)

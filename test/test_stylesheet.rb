@@ -1491,4 +1491,78 @@ class TestStylesheet < Minitest::Test
     assert_equal Gouache::Color::BG, layer[1].role
   end
 
+  def test_stylesheet_with_direct_color_objects
+    # Test creating Gouache with direct Color objects as style values
+    fg_color = Gouache::Color.rgb(255, 128, 0)
+    bg_color = Gouache::Color.on_rgb(0, 255, 128)
+    ul_color = Gouache::Color.over_rgb(255, 0, 255)
+
+    go = Gouache.new(
+      orange_text: fg_color,
+      green_bg: bg_color,
+      magenta_ul: ul_color
+    )
+
+    result = go[:orange_text, "orange", :green_bg, "green", :magenta_ul, "magenta"]
+
+    # Should contain proper escape sequences
+    assert_includes result, "\e[38;2;255;128;0m"  # orange fg
+    assert_includes result, "\e[48;2;0;255;128m"  # green bg
+    assert_includes result, "\e[58;2;255;0;255m"  # magenta ul
+    assert_includes result, "orange"
+    assert_includes result, "green"
+    assert_includes result, "magenta"
+  end
+
+  def test_stylesheet_with_color_objects_in_arrays
+    # Test Color objects mixed with SGR codes in array styles
+    fg_color = Gouache::Color.rgb(255, 0, 0)
+    bg_color = Gouache::Color.on_rgb(0, 0, 255)
+
+    go = Gouache.new(
+      complex_style: [1, fg_color, bg_color, 3]  # bold, red fg, blue bg, italic
+    )
+
+    result = go[:complex_style, "styled text"]
+
+    # Should contain proper escape sequences for bold, colors, and italic
+    assert_includes result, "\e[22;38;2;255;0;0;48;2;0;0;255;3;1m"
+    assert_includes result, "styled text"
+  end
+
+  def test_stylesheet_with_basic_color_objects
+    # Test Color objects created from basic SGR codes
+    red_fg = Gouache::Color.sgr(31)
+    green_bg = Gouache::Color.sgr(42)
+    bright_blue = Gouache::Color.sgr(94)
+
+    go = Gouache.new(
+      basic_red: red_fg,
+      basic_green_bg: green_bg,
+      bright_blue: bright_blue
+    )
+
+    result = go[:basic_red, "red", :basic_green_bg, "green", :bright_blue, "blue"]
+
+    assert_includes result, "\e[31m"
+    assert_includes result, "\e[42m"
+    assert_includes result, "\e[94m"
+  end
+
+  def test_stylesheet_color_objects_with_effects
+    # Test Color objects combined with effects
+    red_color = Gouache::Color.rgb(255, 0, 0)
+    effect = proc { |top, under| top.bold = true }
+
+    go = Gouache.new(
+      red_with_effect: [red_color, effect]
+    )
+
+    result = go[:red_with_effect, "text"]
+
+    # Should contain red color and bold effect
+    assert_includes result, "\e[22;38;2;255;0;0;1m"
+    assert_includes result, "text"
+  end
+
 end

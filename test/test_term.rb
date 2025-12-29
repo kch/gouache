@@ -322,4 +322,34 @@ class TestTerm < Minitest::Test
       end
     end
   end
+
+  def test_dark_method
+    # Test light background (white bg, black fg) - should return false
+    Gouache::Term.stub :fg_color, [0, 0, 0] do
+      Gouache::Term.stub :bg_color, [255, 255, 255] do
+        refute Gouache::Term.dark?, "Light background should return false"
+      end
+    end
+
+    # Test dark background (black bg, white fg) - should return true
+    Gouache::Term.stub :fg_color, [255, 255, 255] do
+      Gouache::Term.stub :bg_color, [0, 0, 0] do
+        assert Gouache::Term.dark?, "Dark background should return true"
+      end
+    end
+
+    # Test equal lightness (same fg and bg) - should return false
+    Gouache::Term.stub :fg_color, [128, 128, 128] do
+      Gouache::Term.stub :bg_color, [128, 128, 128] do
+        refute Gouache::Term.dark?, "Equal lightness should return false"
+      end
+    end
+
+    # Test gray background darker than gray foreground - should return true
+    Gouache::Term.stub :fg_color, [192, 192, 192] do  # lighter gray
+      Gouache::Term.stub :bg_color, [64, 64, 64] do   # darker gray
+        assert Gouache::Term.dark?, "Darker background than foreground should return true"
+      end
+    end
+  end
 end

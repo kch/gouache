@@ -75,6 +75,7 @@ class Gouache
     def rgb_for(n)     = scan_color osc(4, n, ??) # currently unused
     def fg_color       = (@fg_color ||= scan_color osc(10, ??))
     def bg_color       = (@bg_color ||= scan_color osc(11, ??))
+    def dark?          = [fg_color, bg_color].map{ ColorUtils.oklch_from_srgb8(it)[0] }.then{|fl,bl| bl < fl }
     def colors         = (@colors   ||= COLORS256.dup.tap{ it[RG_BASIC] = basic_colors }.freeze)
     def basic_colors
       return @basic_colors if @basic_colors

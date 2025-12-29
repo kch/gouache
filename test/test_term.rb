@@ -86,32 +86,70 @@ class TestTerm < Minitest::Test
   end
 
   def test_scan_colors
-    # Test standard format with \a ending
-    osc_string = "\e]4;1;rgb:ff/00/00\a\e]4;2;rgb:00/ff/00\a"
+    # Test standard 2-digit format with \a ending
+    osc_string = "\e]4;1;rgb:fc/de/ab\a\e]4;2;rgb:12/34/56\a"
     colors = Gouache::Term.scan_colors(osc_string, 2)
-    assert_equal({1 => [255, 0, 0], 2 => [0, 255, 0]}, colors)
+    assert_equal({1 => [0xfc, 0xde, 0xab], 2 => [0x12, 0x34, 0x56]}, colors)
 
     # Test with \e\\ ending
-    osc_string = "\e]4;1;rgb:ff/00/00\e\\\e]4;2;rgb:00/ff/00\e\\"
+    osc_string = "\e]4;1;rgb:fc/de/ab\e\\\e]4;2;rgb:12/34/56\e\\"
     colors = Gouache::Term.scan_colors(osc_string, 2)
-    assert_equal({1 => [255, 0, 0], 2 => [0, 255, 0]}, colors)
+    assert_equal({1 => [0xfc, 0xde, 0xab], 2 => [0x12, 0x34, 0x56]}, colors)
 
-    # Test with ffff/ffff/ffff format
-    osc_string = "\e]4;1;rgb:ffff/0000/0000\a"
+    # Test 4-digit format
+    osc_string = "\e]4;1;rgb:fcde/1234/5678\a"
     colors = Gouache::Term.scan_colors(osc_string, 1)
-    assert_equal({1 => [255, 0, 0]}, colors)
+    assert_equal({1 => [0xfc, 0x12, 0x56]}, colors)
 
-    # Test mixed formats
-    osc_string = "\e]4;1;rgb:ff/00/00\a\e]4;2;rgb:ffff/ffff/0000\e\\"
+    # Test 3-digit format
+    osc_string = "\e]4;1;rgb:fcd/123/567\a"
+    colors = Gouache::Term.scan_colors(osc_string, 1)
+    assert_equal({1 => [0xfc, 0x12, 0x56]}, colors)
+
+    # Test 1-digit format (should be doubled)
+    osc_string = "\e]4;1;rgb:f/1/5\a"
+    colors = Gouache::Term.scan_colors(osc_string, 1)
+    assert_equal({1 => [0xff, 0x11, 0x55]}, colors)
+
+    # Test truncated response (wrong length) - should return nil
+    osc_string = "\e]4;1;rgb:ff/00/00\a"
     colors = Gouache::Term.scan_colors(osc_string, 2)
-    assert_equal({1 => [255, 0, 0], 2 => [255, 255, 0]}, colors)
+    assert_nil colors, "Should return nil when length doesn't match"
+
+    # Test empty response - should return nil
+    colors = Gouache::Term.scan_colors("", 1)
+    assert_nil colors, "Should return nil for empty string"
+
+    # Test malformed OSC sequences - should return nil
+    colors = Gouache::Term.scan_colors("invalid", 1)
+    assert_nil colors, "Should return nil for invalid format"
+
+    # Test OSC without color index (for OSC 10/11)
+    osc_string = "\e]10;rgb:cc/cc/cc\a"
+    colors = Gouache::Term.scan_colors(osc_string, 1)
+    assert_equal({nil => [0xcc, 0xcc, 0xcc]}, colors)
   end
 
   def test_scan_color
-    osc_string = "\e]4;1;rgb:ff/00/00\a"
+    # Test 2-digit hex
+    osc_string = "\e]4;1;rgb:fc/de/ab\a"
     color = Gouache::Term.scan_color(osc_string)
+    assert_equal [0xfc, 0xde, 0xab], color
 
-    assert_equal [255, 0, 0], color
+    # Test 4-digit hex (takes first 2 chars of each)
+    osc_string = "\e]10;rgb:fcde/1234/5678\a"
+    color = Gouache::Term.scan_color(osc_string)
+    assert_equal [0xfc, 0x12, 0x56], color
+
+    # Test 3-digit hex (takes first 2 chars of each)
+    osc_string = "\e]11;rgb:fcd/123/567\a"
+    color = Gouache::Term.scan_color(osc_string)
+    assert_equal [0xfc, 0x12, 0x56], color
+
+    # Test 1-digit hex (should be doubled)
+    osc_string = "\e]10;rgb:f/1/5\a"
+    color = Gouache::Term.scan_color(osc_string)
+    assert_equal [0xff, 0x11, 0x55], color
   end
 
   def test_color_level_from_env

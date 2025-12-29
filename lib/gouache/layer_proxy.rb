@@ -5,7 +5,7 @@ class Gouache
 
     Layer::RANGES.each do |k, r|
       if k in :fg | :bg | :underline_color
-        define_method(k) { @layer[r.index] }
+        define_method(k) { Color.maybe_color @layer[r.index] }
         define_method("#{k}=") do |v|
           @layer[r.index] = Color.maybe_color(v){ it.change_role(Color.const_get(k.to_s.upcase)) }
         end

@@ -14,9 +14,29 @@ class TestLayerProxy < Minitest::Test
     assert_same @layer, @proxy.__layer
   end
 
-  def test_fg_reader
+  def test_fg_reader_with_string
     @layer[Gouache::Layer::RANGES[:fg].index] = "red"
     assert_equal "red", @proxy.fg
+  end
+
+  def test_fg_reader_with_color_object
+    color = Gouache::Color.rgb(255, 0, 0)
+    @layer[Gouache::Layer::RANGES[:fg].index] = color
+    result = @proxy.fg
+    assert_same color, result
+  end
+
+  def test_fg_reader_with_integer_wrapped_as_color
+    @layer = Gouache::Layer.from(31)
+    @proxy = Gouache::LayerProxy.new(@layer)
+    result = @proxy.fg
+    assert_instance_of Gouache::Color, result
+    assert_equal Gouache::Color::FG, result.role
+  end
+
+  def test_fg_reader_with_nil
+    @layer[Gouache::Layer::RANGES[:fg].index] = nil
+    assert_nil @proxy.fg
   end
 
   def test_fg_setter_with_color
@@ -54,9 +74,29 @@ class TestLayerProxy < Minitest::Test
     assert_equal [255, 0, 0], result.rgb
   end
 
-  def test_bg_reader
+  def test_bg_reader_with_string
     @layer[Gouache::Layer::RANGES[:bg].index] = "blue"
     assert_equal "blue", @proxy.bg
+  end
+
+  def test_bg_reader_with_color_object
+    color = Gouache::Color.on_rgb(0, 0, 255)
+    @layer[Gouache::Layer::RANGES[:bg].index] = color
+    result = @proxy.bg
+    assert_same color, result
+  end
+
+  def test_bg_reader_with_integer_wrapped_as_color
+    @layer = Gouache::Layer.from(41)
+    @proxy = Gouache::LayerProxy.new(@layer)
+    result = @proxy.bg
+    assert_instance_of Gouache::Color, result
+    assert_equal Gouache::Color::BG, result.role
+  end
+
+  def test_bg_reader_with_nil
+    @layer[Gouache::Layer::RANGES[:bg].index] = nil
+    assert_nil @proxy.bg
   end
 
   def test_bg_setter_with_color
@@ -82,9 +122,30 @@ class TestLayerProxy < Minitest::Test
     assert_equal [0, 255, 0], result.rgb
   end
 
-  def test_underline_color_reader
+  def test_underline_color_reader_with_string
     @layer[Gouache::Layer::RANGES[:underline_color].index] = "red underline"
     assert_equal "red underline", @proxy.underline_color
+  end
+
+  def test_underline_color_reader_with_color_object
+    color = Gouache::Color.over_rgb(255, 128, 0)
+    @layer[Gouache::Layer::RANGES[:underline_color].index] = color
+    result = @proxy.underline_color
+    assert_same color, result
+  end
+
+  def test_underline_color_reader_with_integer_wrapped_as_color
+    ul_color = Gouache::Color.over_rgb(255, 0, 0)
+    @layer = Gouache::Layer.from(ul_color)
+    @proxy = Gouache::LayerProxy.new(@layer)
+    result = @proxy.underline_color
+    assert_instance_of Gouache::Color, result
+    assert_equal Gouache::Color::UL, result.role
+  end
+
+  def test_underline_color_reader_with_nil
+    @layer[Gouache::Layer::RANGES[:underline_color].index] = nil
+    assert_nil @proxy.underline_color
   end
 
   def test_underline_color_setter_with_color

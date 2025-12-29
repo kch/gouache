@@ -81,7 +81,7 @@ class Gouache
       end
     end
 
-    # return sgr codes to turn on self after other
+    # return array of sgr codes to turn on self after other
     def diff(other)
       # special case: last 2 elems are bold/dim, compare as unit as both are turned off by SGR 22
       group22 = ->a{ [*a[...-2], a[-2..]] }  # => [..., [bold, dim]]

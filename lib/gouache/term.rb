@@ -95,7 +95,7 @@ class Gouache
 
     def color_level
       return @color_level if @color_level
-      return :truecolor if /truecolor/i =~ ENV["COLORTERM"]
+      return :truecolor if /truecolor|24bit/i =~ ENV["COLORTERM"]
       case ENV["TERM"]
       when /-256color$/                 then :_256
       when /^(xterm|screen|vt100|ansi)/ then :basic

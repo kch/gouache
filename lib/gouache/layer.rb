@@ -39,7 +39,7 @@ class Gouache
     end
 
     # return array of RANGE indices that cover sgr code x
-    def RANGES.for(x) = values.filter_map{|r| r.index if r.member? x }.then{ it if it.any? }
+    def RANGES.indices_for(x) = values.filter_map{|r| r.index if r.member? x }.then{ it if it.any? }
     RANGES.freeze
 
     BASE = new(RANGES.values.map{ Color.maybe_color it.off }).freeze
@@ -65,7 +65,7 @@ class Gouache
       sgr_codes.each do |sgr|
         case sgr
         in 0 then layer.replace BASE
-        in _ then RANGES.for(sgr.to_i)&.each{|i| layer[i] = sgr }
+        in _ then RANGES.indices_for(sgr.to_i)&.each{|i| layer[i] = sgr }
         end
       end
       layer.effects = effects

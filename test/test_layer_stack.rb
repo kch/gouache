@@ -67,8 +67,8 @@ class TestLayerStack < Minitest::Test
 
     # Top should be overlay of BASE + bold + red
     top = @stack.top
-    bold_pos = Gouache::Layer::RANGES.for(1).first
-    fg_pos = Gouache::Layer::RANGES.for(31).first
+    bold_pos = Gouache::Layer::RANGES.indices_for(1).first
+    fg_pos = Gouache::Layer::RANGES.indices_for(31).first
 
     assert_equal 1, top[bold_pos]
     assert_equal 31, top[fg_pos]

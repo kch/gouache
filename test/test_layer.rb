@@ -7,13 +7,13 @@ class TestLayer < Minitest::Test
   def setup
     super
     @layer = Gouache::Layer.empty
-    @fg_pos = Gouache::Layer::RANGES.for(31).first
-    @bg_pos = Gouache::Layer::RANGES.for(42).first
-    @italic_pos = Gouache::Layer::RANGES.for(3).first
-    @underline_pos = Gouache::Layer::RANGES.for(4).first
-    @underline_color_pos = Gouache::Layer::RANGES.for(58).first
-    @bold_pos = Gouache::Layer::RANGES.for(1).first
-    @dim_pos = Gouache::Layer::RANGES.for(2).first
+    @fg_pos = Gouache::Layer::RANGES.indices_for(31).first
+    @bg_pos = Gouache::Layer::RANGES.indices_for(42).first
+    @italic_pos = Gouache::Layer::RANGES.indices_for(3).first
+    @underline_pos = Gouache::Layer::RANGES.indices_for(4).first
+    @underline_color_pos = Gouache::Layer::RANGES.indices_for(58).first
+    @bold_pos = Gouache::Layer::RANGES.indices_for(1).first
+    @dim_pos = Gouache::Layer::RANGES.indices_for(2).first
   end
 
 
@@ -366,31 +366,31 @@ class TestLayer < Minitest::Test
     assert_equal 22, updated[@dim_pos] # dim reset preserved
   end
 
-  def test_ranges_for_method
-    # Test that RANGES.for works correctly
-    assert_equal [@bold_pos], Gouache::Layer::RANGES.for(1)
-    assert_equal [@dim_pos], Gouache::Layer::RANGES.for(2)
-    assert_equal [@fg_pos], Gouache::Layer::RANGES.for(31)
-    assert_equal [@bg_pos], Gouache::Layer::RANGES.for(42)
-    assert_nil Gouache::Layer::RANGES.for(999)  # invalid code
+  def test_ranges_indices_for_method
+    # Test that RANGES.indices_for works correctly
+    assert_equal [@bold_pos], Gouache::Layer::RANGES.indices_for(1)
+    assert_equal [@dim_pos], Gouache::Layer::RANGES.indices_for(2)
+    assert_equal [@fg_pos], Gouache::Layer::RANGES.indices_for(31)
+    assert_equal [@bg_pos], Gouache::Layer::RANGES.indices_for(42)
+    assert_nil Gouache::Layer::RANGES.indices_for(999)  # invalid code
 
     # Test underline_color range
     underline_color_pos = Gouache::Layer::RANGES[:underline_color].index
-    assert_equal [underline_color_pos], Gouache::Layer::RANGES.for(58)  # underline color on
-    assert_equal [underline_color_pos], Gouache::Layer::RANGES.for(59)  # underline color off
+    assert_equal [underline_color_pos], Gouache::Layer::RANGES.indices_for(58)  # underline color on
+    assert_equal [underline_color_pos], Gouache::Layer::RANGES.indices_for(59)  # underline color off
   end
 
-  def test_ranges_for_method_multiple_matches
+  def test_ranges_indices_for_method_multiple_matches
     # Test code that matches multiple ranges (22 resets both bold and dim)
-    positions = Gouache::Layer::RANGES.for(22)
+    positions = Gouache::Layer::RANGES.indices_for(22)
     assert_includes positions, @bold_pos
     assert_includes positions, @dim_pos
     assert_equal 2, positions.length
   end
 
-  def test_ranges_for_method_returns_nil_for_no_matches
+  def test_ranges_indices_for_method_returns_nil_for_no_matches
     # Test that no matches returns nil, not empty array
-    result = Gouache::Layer::RANGES.for(999)
+    result = Gouache::Layer::RANGES.indices_for(999)
     assert_nil result
     refute_equal [], result
   end
@@ -644,7 +644,7 @@ class TestLayer < Minitest::Test
 
 
   def test_layer_from_with_invalid_sgr_codes
-    # Invalid SGR codes should be ignored (RANGES.for returns nil)
+    # Invalid SGR codes should be ignored (RANGES.indices_for returns nil)
     layer = Gouache::Layer.from([1, 999, 31])  # 999 is invalid
     assert_equal 1, layer[@bold_pos]
     assert_equal 31, layer[@fg_pos]

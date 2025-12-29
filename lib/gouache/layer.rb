@@ -58,10 +58,10 @@ class Gouache
 
     def self.empty = new(RANGES.size, nil)
 
-    # create a new layer from the given sgr codes
-    def self.from(*sgr_codes)
+    # create a new layer from the given sgr codes / effect procs
+    def self.from(*args)
       layer = empty
-      effects, sgr_codes = sgr_codes.flatten.partition { it in Proc }
+      effects, sgr_codes = args.flatten.partition { it in Proc }
       sgr_codes.each do |sgr|
         case sgr
         in 0 then layer.replace BASE

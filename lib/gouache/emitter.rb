@@ -7,13 +7,14 @@ class Gouache
   class Emitter
 
     def initialize(instance:)
-      @rules   = instance.rules # stylesheet
-      @enabled = instance.enabled?
-      @layers  = LayerStack.new # each tag or bare sgr emitted generates a layer
-      @flushed = @layers.base   # keep layer state after each flush so next flush can diff against it
-      @queue   = []             # accumulate sgr params to emit until we have text to style (we collapse to minimal set then)
-      @got_sgr = false          # did we emit sgr at all? used to determine if reset in the end
-      @out     = +""
+      @rules    = instance.rules # stylesheet
+      @enabled  = instance.enabled?
+      @eachline = instance.eachline
+      @layers   = LayerStack.new # each tag or bare sgr emitted generates a layer
+      @flushed  = @layers.base   # keep layer state after each flush so next flush can diff against it
+      @queue    = []             # accumulate sgr params to emit until we have text to style (we collapse to minimal set then)
+      @got_sgr  = false          # did we emit sgr at all? used to determine if reset in the end
+      @out      = +""
       enqueue @layers.diffpush @rules[:_base] if @rules.tag? :_base # special rule _base applies to all
     end
 
@@ -40,8 +41,34 @@ class Gouache
       s = s.to_s
       return self if s.empty?
       flush
-      @out << s
+      if @enabled && @eachline && s.include?(@eachline) && (sgr = @layers.top.diff(@layers.base)).any?
+        emit_each_line s, sgr
+      else
+        @out << s
+      end
       self
+    end
+
+    private def emit_each_line(s, sgrs)
+      ss    = StringScanner.new(s)
+      sgr   = Layer.from(sgrs).to_sgr(fallback: true)
+      sgr   = [CSI, sgr, ?m].join
+      reset = [CSI, "0m"].join
+      sepla = /(?=#{Regexp.escape @eachline})/
+      sep   = /(?:#{Regexp.escape @eachline})+/
+      while line = ss.scan_until(sepla)
+        @out << line
+        @out << reset
+        @out << ss.scan(sep)
+        @out << sgr unless ss.eos? # will enqueue instead below
+      end
+      if ss.eos?
+        @got_sgr = false        # already emitted 0m, this prevents the extra 0 at emit!
+        @flushed = @layers.base # we sent 0 so reset flushed
+        enqueue sgrs            # enqueue the sgrs we didn't emit so they get consolidated on next flush
+      else
+        @out << ss.rest
+      end
     end
 
     private def flush

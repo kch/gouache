@@ -1066,4 +1066,194 @@ class TestEmitter < Minitest::Test
     result = Gouache.new(_base: 35) { self << "start"; bold { self << "middle"; italic("end") } }
     assert_equal "\e[35mstart\e[22;1mmiddle\e[3mend\e[0m", result
   end
+
+  def test_eachline_disabled_no_newline_processing
+    gouache = Gouache.new(eachline: false, _base: [Gouache::Color.rgb(255, 0, 0), Gouache::Color.on_rgb(0, 0, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "line1\nline2\nline3"
+    result = emitter.emit!
+    assert_equal "\e[38;2;255;0;0;48;2;0;0;0mline1\nline2\nline3\e[0m", result
+  end
+
+  def test_eachline_enabled_with_newlines
+    gouache = Gouache.new(eachline: true, _base: [Gouache::Color.rgb(255, 0, 0), Gouache::Color.on_rgb(0, 0, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "line1\nline2\nline3"
+    result = emitter.emit!
+    expected = "\e[38;2;255;0;0;48;2;0;0;0mline1\e[0m\n\e[38;2;255;0;0;48;2;0;0;0mline2\e[0m\n\e[38;2;255;0;0;48;2;0;0;0mline3\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_no_sgr_no_processing
+    gouache = Gouache.new(eachline: true)
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "plain\ntext\nlines"
+    result = emitter.emit!
+    assert_equal "plain\ntext\nlines", result
+  end
+
+  def test_eachline_with_tags
+    gouache = Gouache.new(eachline: true)
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter.open_tag(:red)
+    emitter << "red\ntext"
+    result = emitter.emit!
+    expected = "\e[31mred\e[0m\n\e[31mtext\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_multiple_consecutive_newlines
+    gouache = Gouache.new(eachline: true, _base: [Gouache::Color.rgb(0, 255, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "line1\n\n\nline2"
+    result = emitter.emit!
+    expected = "\e[38;2;0;255;0mline1\e[0m\n\n\n\e[38;2;0;255;0mline2\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_trailing_newline
+    gouache = Gouache.new(eachline: true, _base: [Gouache::Color.rgb(0, 0, 255)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "line1\nline2\n"
+    result = emitter.emit!
+    expected = "\e[38;2;0;0;255mline1\e[0m\n\e[38;2;0;0;255mline2\e[0m\n"
+    assert_equal expected, result
+  end
+
+  def test_eachline_empty_lines
+    gouache = Gouache.new(eachline: true, _base: [Gouache::Color.rgb(255, 255, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "start\n\nend"
+    result = emitter.emit!
+    expected = "\e[38;2;255;255;0mstart\e[0m\n\n\e[38;2;255;255;0mend\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_with_nested_tags
+    gouache = Gouache.new(eachline: true)
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter.open_tag(:blue)
+    emitter << "blue\n"
+    emitter.open_tag(:bold)
+    emitter << "bold blue\n"
+    emitter.close_tag
+    emitter << "just blue"
+    result = emitter.emit!
+    expected = "\e[34mblue\e[0m\n\e[22;34;1mbold blue\e[0m\n\e[34mjust blue\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_disabled_gouache_no_processing
+    gouache = Gouache.new(eachline: true, enabled: false, _base: [Gouache::Color.rgb(255, 0, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "line1\nline2"
+    result = emitter.emit!
+    assert_equal "line1\nline2", result
+  end
+
+  def test_eachline_single_line_no_newline
+    gouache = Gouache.new(eachline: true, _base: [Gouache::Color.rgb(128, 128, 128)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "single line"
+    result = emitter.emit!
+    expected = "\e[38;2;128;128;128msingle line\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_with_sgr_blocks
+    gouache = Gouache.new(eachline: true)
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter.open_tag(:red)
+    emitter.begin_sgr
+    emitter.push_sgr("1")  # bold
+    emitter << "red bold\nstill red bold"
+    emitter.end_sgr
+    result = emitter.emit!
+    expected = "\e[22;31;1mred bold\e[0m\n\e[22;31;1mstill red bold\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_fallback_color_levels
+    Gouache::Term.color_level = :basic
+    gouache = Gouache.new(eachline: true, _base: [Gouache::Color.rgb(255, 0, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "basic\ncolors"
+    result = emitter.emit!
+    expected = "\e[91mbasic\e[0m\n\e[91mcolors\e[0m"
+    assert_equal expected, result
+  ensure
+    Gouache::Term.color_level = :truecolor
+  end
+
+  def test_eachline_custom_separator_pipe
+    gouache = Gouache.new(eachline: "|", _base: [Gouache::Color.rgb(255, 0, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "first|second|third"
+    result = emitter.emit!
+    expected = "\e[38;2;255;0;0mfirst\e[0m|\e[38;2;255;0;0msecond\e[0m|\e[38;2;255;0;0mthird\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_custom_separator_double_dash
+    gouache = Gouache.new(eachline: "--", _base: [Gouache::Color.rgb(0, 255, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "line1--line2--line3"
+    result = emitter.emit!
+    expected = "\e[38;2;0;255;0mline1\e[0m--\e[38;2;0;255;0mline2\e[0m--\e[38;2;0;255;0mline3\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_custom_separator_regex_special_chars
+    gouache = Gouache.new(eachline: ".*", _base: [Gouache::Color.rgb(0, 0, 255)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "start.*middle.*end"
+    result = emitter.emit!
+    expected = "\e[38;2;0;0;255mstart\e[0m.*\e[38;2;0;0;255mmiddle\e[0m.*\e[38;2;0;0;255mend\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_custom_separator_consecutive
+    gouache = Gouache.new(eachline: ",", _base: [Gouache::Color.rgb(255, 255, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "a,,b,,,c"
+    result = emitter.emit!
+    expected = "\e[38;2;255;255;0ma\e[0m,,\e[38;2;255;255;0mb\e[0m,,,\e[38;2;255;255;0mc\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_custom_separator_no_sgr
+    gouache = Gouache.new(eachline: ";")
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "plain;text;here"
+    result = emitter.emit!
+    assert_equal "plain;text;here", result
+  end
+
+  def test_eachline_custom_separator_with_tags
+    gouache = Gouache.new(eachline: " | ")
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter.open_tag(:red)
+    emitter << "red | text"
+    result = emitter.emit!
+    expected = "\e[31mred\e[0m | \e[31mtext\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_false_ignores_custom_separator
+    gouache = Gouache.new(eachline: false, _base: [Gouache::Color.rgb(255, 0, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "no|processing|here"
+    result = emitter.emit!
+    expected = "\e[38;2;255;0;0mno|processing|here\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_true_uses_newline_default
+    gouache = Gouache.new(eachline: true, _base: [Gouache::Color.rgb(255, 0, 0)])
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "line1\nline2"
+    result = emitter.emit!
+    expected = "\e[38;2;255;0;0mline1\e[0m\n\e[38;2;255;0;0mline2\e[0m"
+    assert_equal expected, result
+  end
 end

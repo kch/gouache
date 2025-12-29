@@ -26,7 +26,7 @@ class Gouache
   RX_UNPAINT = Regexp.union RX_SGR, WRAP_OPEN, WRAP_CLOSE
   RX_SGR_SEQ = /(?<=^|;|\[)(?: ( [345]8 ;  (?: 5 ; #{D8} | 2 (?: ; #{D8} ){3} ))  |  (#{D8}) )(?=;|m|$)/x
 
-  attr :rules
+  attr :rules, :eachline
 
   class << self
     using Wrap
@@ -36,17 +36,19 @@ class Gouache
     alias embed wrap
 
     extend Forwardable
-    def_delegators "::Gouache::MAIN", :enable, :disable, :reopen, :enabled?, :puts, :print, :refinement
+    def_delegators "::Gouache::MAIN",
+      :enable, :disable, :enabled?, :reopen, :puts, :print, :refinement, :eachline
 
     def method_missing(m, ...)   = Builder::Proxy.for(MAIN, m, ...) || super
     def [](*args, **styles, &b)  = (styles.empty? ? MAIN : MAIN.dup(styles:))[*args, &b]
     def new(*args, **kvargs, &b) = (go = super and block_given? ? go.(&b) : go)
   end
 
-  def initialize(styles:{}, io:nil, enabled:nil, **kvstyles)
-    @io      = io
-    @enabled = enabled
-    @rules   = Stylesheet::BASE.merge(styles, kvstyles)
+  def initialize(styles:{}, io:nil, enabled:nil, eachline:false, **kvstyles)
+    @io       = io
+    @enabled  = enabled
+    @eachline = eachline == true ? "\n" : eachline
+    @rules    = Stylesheet::BASE.merge(styles, kvstyles)
   end
 
   MAIN = new # global instance

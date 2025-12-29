@@ -952,6 +952,134 @@ class TestIntegration < Minitest::Test
     assert_includes result, "back with ul", "Should contain final text"
   end
 
+  def test_eachline_basic_functionality
+    go = Gouache.new(eachline: true, _base: [@C.rgb(255, 0, 0)])
+    result = go["line1\nline2\nline3"]
+    expected = "\e[38;2;255;0;0mline1\e[0m\n\e[38;2;255;0;0mline2\e[0m\n\e[38;2;255;0;0mline3\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_with_complex_styling
+    go = Gouache.new(eachline: true)
+    result = go[:red, :bold, "bold red\nstill bold red"]
+    expected = "\e[22;31;1mbold red\e[0m\n\e[22;31;1mstill bold red\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_nested_array_structure
+    go = Gouache.new(eachline: true)
+    result = go[:blue, ["some\nblue", [:bold, "text\nwith"], "\nbold"]]
+    expected = "\e[34msome\e[0m\n\e[34mblue\e[22;1mtext\e[0m\n\e[22;34;1mwith\e[22m\e[0m\n\e[34mbold\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_multiple_newlines
+    go = Gouache.new(eachline: true, _base: [@C.on_rgb(0, 255, 0)])
+    result = go["start\n\n\nend"]
+    expected = "\e[48;2;0;255;0mstart\e[0m\n\n\n\e[48;2;0;255;0mend\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_trailing_newlines
+    go = Gouache.new(eachline: true, _base: [@C.rgb(0, 0, 255)])
+    result = go["text\n\n"]
+    expected = "\e[38;2;0;0;255mtext\e[0m\n\n"
+    assert_equal expected, result
+  end
+
+  def test_eachline_disabled_vs_enabled
+    text = "line1\nline2"
+
+    # Without eachline
+    go_disabled = Gouache.new(eachline: false, _base: [@C.rgb(255, 0, 0)])
+    result_disabled = go_disabled[text]
+    assert_equal "\e[38;2;255;0;0mline1\nline2\e[0m", result_disabled
+
+    # With eachline
+    go_enabled = Gouache.new(eachline: true, _base: [@C.rgb(255, 0, 0)])
+    result_enabled = go_enabled[text]
+    assert_equal "\e[38;2;255;0;0mline1\e[0m\n\e[38;2;255;0;0mline2\e[0m", result_enabled
+  end
+
+  def test_eachline_complex_color_combinations
+    go = Gouache.new(eachline: true)
+    fg = @C.rgb(255, 100, 50)
+    bg = @C.on_rgb(50, 50, 200)
+    ul = @C.over_rgb(0, 255, 100)
+    result = go[fg, bg, ul, "colored\nlines"]
+    expected = "\e[38;2;255;100;50;48;2;50;50;200;58;2;0;255;100mcolored\e[0m\n\e[38;2;255;100;50;48;2;50;50;200;58;2;0;255;100mlines\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_with_builder_syntax
+    go = Gouache.new(eachline: true)
+    result = go.red { |x| x << "red\ntext" }
+    expected = "\e[31mred\e[0m\n\e[31mtext\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_fallback_color_levels
+    original_level = Gouache::Term.color_level
+    Gouache::Term.color_level = :basic
+
+    go = Gouache.new(eachline: true, _base: [@C.rgb(255, 0, 0)])
+    result = go["basic\ncolors"]
+    expected = "\e[91mbasic\e[0m\n\e[91mcolors\e[0m"
+    assert_equal expected, result
+  ensure
+    Gouache::Term.color_level = original_level
+  end
+
+  def test_eachline_no_sgr_no_processing
+    go = Gouache.new(eachline: true)
+    result = go["plain\ntext"]
+    assert_equal "plain\ntext", result
+  end
+
+  def test_eachline_custom_separator_pipe
+    go = Gouache.new(eachline: "|", _base: [@C.rgb(255, 0, 0)])
+    result = go["first|second|third"]
+    expected = "\e[38;2;255;0;0mfirst\e[0m|\e[38;2;255;0;0msecond\e[0m|\e[38;2;255;0;0mthird\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_custom_separator_with_styling
+    go = Gouache.new(eachline: " :: ")
+    result = go[:blue, :bold, "styled :: text :: here"]
+    expected = "\e[22;34;1mstyled\e[0m :: \e[22;34;1mtext\e[0m :: \e[22;34;1mhere\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_custom_separator_regex_chars
+    go = Gouache.new(eachline: ".*", _base: [@C.rgb(0, 255, 0)])
+    result = go["start.*middle.*end"]
+    expected = "\e[38;2;0;255;0mstart\e[0m.*\e[38;2;0;255;0mmiddle\e[0m.*\e[38;2;0;255;0mend\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_custom_separator_builder_syntax
+    go = Gouache.new(eachline: " | ")
+    result = go.red { |x| x << "red | text" }
+    expected = "\e[31mred\e[0m | \e[31mtext\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_custom_separator_complex_colors
+    go = Gouache.new(eachline: ",")
+    fg = @C.rgb(255, 100, 50)
+    bg = @C.on_rgb(50, 50, 200)
+    result = go[fg, bg, "colored,text,segments"]
+    expected = "\e[38;2;255;100;50;48;2;50;50;200mcolored\e[0m,\e[38;2;255;100;50;48;2;50;50;200mtext\e[0m,\e[38;2;255;100;50;48;2;50;50;200msegments\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_eachline_custom_separator_consecutive
+    go = Gouache.new(eachline: ",", _base: [@C.rgb(255, 255, 0)])
+    result = go["a,,b,,,c"]
+    expected = "\e[38;2;255;255;0ma\e[0m,,\e[38;2;255;255;0mb\e[0m,,,\e[38;2;255;255;0mc\e[0m"
+    assert_equal expected, result
+  end
+
 end
 
 class TestIntegrationWithRefinement < Minitest::Test

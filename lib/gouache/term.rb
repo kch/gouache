@@ -100,9 +100,9 @@ class Gouache
 
     @@color_indices = {}
     private def nearest_color(rgb, list)
-      @@color_indices[rgb] ||= list.zip(0..).sort_by do |color, i|
+      @@color_indices[rgb] ||= list.zip(0..).min_by do |color, i|
         ColorUtils.oklab_distance_from_srgb8 rgb, color
-      end.first.last # first of sort, last is index
+      end.last # .last is the color index in the list
     end
 
     def nearest16(rgb)  = nearest_color(rgb, basic_colors)

@@ -13,8 +13,8 @@ class TestEffects < Minitest::Test
     called_with = nil
     effect = proc { |top, under| called_with = [top, under] }
 
-    layer = Gouache::Layer.from(1, effect)
-    @stack.diffpush(layer)
+    layer = Gouache::Layer.from(1)
+    @stack.diffpush(layer, [effect])
 
     refute_nil called_with
     assert_instance_of Gouache::LayerProxy, called_with[0]
@@ -30,8 +30,7 @@ class TestEffects < Minitest::Test
     bold_red = Gouache::Layer.from(1, 31)
     @stack.diffpush(bold_red)
 
-    layer_with_effect = Gouache::Layer.from(effect)
-    @stack.diffpush(layer_with_effect)
+    @stack.diffpush(nil, [effect])
   end
 
   def test_effect_receives_correct_under_layer
@@ -43,8 +42,7 @@ class TestEffects < Minitest::Test
     bold_red = Gouache::Layer.from(1, 31)
     @stack.diffpush(bold_red)
 
-    layer_with_effect = Gouache::Layer.from(effect)
-    @stack.diffpush(layer_with_effect)
+    @stack.diffpush(nil, [effect])
   end
 
   def test_effect_can_modify_top_layer
@@ -56,8 +54,7 @@ class TestEffects < Minitest::Test
     base_layer = Gouache::Layer.from(1)  # bold
     @stack.diffpush(base_layer)
 
-    effect_layer = Gouache::Layer.from(effect)
-    @stack.diffpush(effect_layer)
+    @stack.diffpush(nil, [effect])
 
     top = @stack.top
     assert_equal 3, top[Gouache::Layer::RANGES[:italic].index]   # italic position
@@ -70,8 +67,8 @@ class TestEffects < Minitest::Test
     effect1 = proc { |top, under| call_order << :first }
     effect2 = proc { |top, under| call_order << :second }
 
-    layer = Gouache::Layer.from(effect1, effect2, 1)
-    @stack.diffpush(layer)
+    layer = Gouache::Layer.from(1)
+    @stack.diffpush(layer, [effect1, effect2])
 
     assert_equal [:first, :second], call_order
   end
@@ -84,8 +81,8 @@ class TestEffects < Minitest::Test
       assert_equal Gouache::Layer::BASE, under.__layer
     end
 
-    layer_with_effect = Gouache::Layer.from(1, effect)
-    @stack.diffpush(layer_with_effect)
+    layer = Gouache::Layer.from(1)
+    @stack.diffpush(layer, [effect])
   end
 
   def test_effects_called_only_when_layer_has_effects
@@ -98,8 +95,8 @@ class TestEffects < Minitest::Test
     assert_equal 0, call_count
 
     # Layer with effects
-    effect_layer = Gouache::Layer.from(effect, 4)
-    @stack.diffpush(effect_layer)
+    layer = Gouache::Layer.from(4)
+    @stack.diffpush(layer, [effect])
     assert_equal 1, call_count
   end
 
@@ -107,8 +104,7 @@ class TestEffects < Minitest::Test
     effect_called = false
     effect = proc { |top, under| effect_called = true }
 
-    layer = Gouache::Layer.from(effect)
-    @stack.diffpush(layer)
+    @stack.diffpush(nil, [effect])
 
     assert effect_called
   end
@@ -134,8 +130,7 @@ class TestEffects < Minitest::Test
     base = Gouache::Layer.from(1, 31)  # bold red
     @stack.diffpush(base)
 
-    effect_layer = Gouache::Layer.from(effect)
-    @stack.diffpush(effect_layer)
+    @stack.diffpush(nil, [effect])
 
     top = @stack.top
     assert_equal 1, top[Gouache::Layer::RANGES[:bold].index]   # bold
@@ -168,8 +163,7 @@ class TestEffects < Minitest::Test
     rich_layer = Gouache::Layer.from(1, 3, 4, 32)  # bold, italic, underline, green
     @stack.diffpush(rich_layer)
 
-    effect_layer = Gouache::Layer.from(effect)
-    @stack.diffpush(effect_layer)
+    @stack.diffpush(nil, [effect])
 
     top = @stack.top
     assert_equal 2, top[Gouache::Layer::RANGES[:dim].index]  # dim
@@ -212,14 +206,12 @@ class TestEffects < Minitest::Test
     # The exact sequence will depend on layer stack diff calculations
     assert result.length > "basestyled".length  # Has escape codes
 
-    # Test that effects were processed by examining intermediate layer
-    rules = go.instance_variable_get(:@rules)
-    layer = rules[:with_effects]
+    # Test that effects were processed by examining stylesheet
+    effects = go.rules.effects[:with_effects]
+    assert_equal [bold_effect, color_copy_effect, dim_effect], effects
 
-    # Layer should have the effects stored
-    assert_equal [bold_effect, color_copy_effect, dim_effect], layer.effects
-
-    # Layer should have SGR codes applied
+    # Test layer has SGR codes applied
+    layer = go.rules.layers[:with_effects]
     assert_equal 32, layer[Gouache::Layer::RANGES[:fg].index]  # green fg
     assert_equal 4, layer[Gouache::Layer::RANGES[:underline].index]   # underline
     assert_equal 3, layer[Gouache::Layer::RANGES[:italic].index]   # italic
@@ -255,11 +247,10 @@ class TestEffects < Minitest::Test
     zero_arity_effect = proc { "no args" }
     three_arity_effect = proc { |top, under, extra| "too many args" }
 
-    layer_zero = Gouache::Layer.from(zero_arity_effect, 1)
-    layer_three = Gouache::Layer.from(three_arity_effect, 1)
+    layer = Gouache::Layer.from(1)
 
-    assert_raises(ArgumentError) { @stack.diffpush(layer_zero) }
-    assert_raises(ArgumentError) { @stack.diffpush(layer_three) }
+    assert_raises(ArgumentError) { @stack.diffpush(layer, [zero_arity_effect]) }
+    assert_raises(ArgumentError) { @stack.diffpush(layer, [three_arity_effect]) }
   end
 
   def test_effect_valid_arity_one
@@ -267,8 +258,8 @@ class TestEffects < Minitest::Test
     call_count = 0
     one_arity_effect = proc { |top| call_count += 1; top.bold = true }
 
-    layer = Gouache::Layer.from(one_arity_effect, 31)
-    @stack.diffpush(layer)
+    layer = Gouache::Layer.from(31)
+    @stack.diffpush(layer, [one_arity_effect])
 
     assert_equal 1, call_count
     assert_equal 1, @stack.top[Gouache::Layer::RANGES[:bold].index]  # bold should be set
@@ -279,8 +270,8 @@ class TestEffects < Minitest::Test
     call_count = 0
     two_arity_effect = proc { |top, under| call_count += 1; top.italic = true }
 
-    layer = Gouache::Layer.from(two_arity_effect, 32)
-    @stack.diffpush(layer)
+    layer = Gouache::Layer.from(32)
+    @stack.diffpush(layer, [two_arity_effect])
 
     assert_equal 1, call_count
     assert_equal 3, @stack.top[Gouache::Layer::RANGES[:italic].index]  # italic was set

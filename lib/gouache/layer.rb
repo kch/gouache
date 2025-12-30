@@ -6,7 +6,6 @@ require_relative "color"
 class Gouache
 
   class Layer < Array
-    attr_accessor :effects
 
     class LayerRange < RangeUnion
       attr :label, :index, :off, :on
@@ -58,17 +57,17 @@ class Gouache
 
     def self.empty = new(RANGES.size, nil)
 
-    # create a new layer from the given sgr codes / effect procs
-    def self.from(*args)
+    # create a new layer from the given sgr codes or Color objs
+    def self.from(*sgr_codes)
       layer = empty
-      effects, sgr_codes = args.flatten.partition { it in Proc }
-      sgr_codes.each do |sgr|
+      sgr_codes.flatten.each do |sgr|
         case sgr
+        in nil
         in 0 then layer.replace BASE
-        in _ then RANGES.indices_for(sgr.to_i)&.each{|i| layer[i] = sgr }
+        in Color | String | Integer
+          RANGES.indices_for(sgr.to_i)&.each{|i| layer[i] = sgr }
         end
       end
-      layer.effects = effects
       layer
     end
 

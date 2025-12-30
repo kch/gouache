@@ -19,11 +19,11 @@ class Gouache
       super [Layer::BASE.dup.extend(LayerTags).freeze]
     end
 
-    def diffpush layer, tag=nil
+    def diffpush layer, effects=nil, tag:nil
       self << top.overlay(layer)
       top.extend LayerTags
       top.tag = tag
-      layer&.effects&.each do
+      effects&.each do
         it.arity in 1..2 or raise ArgumentError
         it.(*[top, under].take(it.arity).map{ LayerProxy.new it })
       end

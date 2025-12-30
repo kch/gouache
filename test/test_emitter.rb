@@ -1256,4 +1256,69 @@ class TestEmitter < Minitest::Test
     expected = "\e[38;2;255;0;0mline1\e[0m\n\e[38;2;255;0;0mline2\e[0m"
     assert_equal expected, result
   end
+
+  def test_base_rule_with_effects
+    # Test that effects in _base rule are applied to all text
+    effect = proc { |top, under| top.italic = true }
+    gouache = Gouache.new(_base: [31, effect])  # red + italic effect
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "test text"
+    result = emitter.emit!
+    expected = "\e[31;3mtest text\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_tag_with_effects
+    # Test that effects in regular tags are applied
+    effect = proc { |top, under| top.underline = true }
+    gouache = Gouache.new(styled: [32, effect])  # green + underline effect
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter.open_tag(:styled) << "styled text"
+    result = emitter.emit!
+    expected = "\e[32;4mstyled text\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_combined_base_and_tag_effects
+    # Test that both _base effects and tag effects work together
+    base_effect = proc { |top, under| top.bold = true }
+    tag_effect = proc { |top, under| top.italic = true }
+
+    gouache = Gouache.new(
+      _base: [31, base_effect],    # red + bold effect
+      styled: [32, tag_effect]     # green + italic effect
+    )
+
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter << "base "
+    emitter.open_tag(:styled) << "styled"
+    result = emitter.emit!
+
+    # Should have base red+bold, then add green+italic
+    expected = "\e[22;31;1mbase \e[32;3mstyled\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_effects_modify_layer_state
+    # Test that effects can modify the layer based on previous state
+    copy_effect = proc do |top, under|
+      if under.fg
+        top.bg = under.fg.change_role(48)  # copy fg to bg with bg role
+      end
+    end
+
+    gouache = Gouache.new(
+      base_red: 31,                    # red fg
+      with_effect: [copy_effect, 32]   # copy under.fg to bg + green fg
+    )
+
+    emitter = Gouache::Emitter.new(instance: gouache)
+    emitter.open_tag(:base_red) << "red "
+    emitter.open_tag(:with_effect) << "green on red"
+    result = emitter.emit!
+
+    # Should have red fg, then green fg + red bg (copied from under)
+    expected = "\e[31mred \e[32;41mgreen on red\e[0m"
+    assert_equal expected, result
+  end
 end

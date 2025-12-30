@@ -1,20 +1,21 @@
 # frozen_string_literal: true
 require_relative "base"
-require_relative "layer"
 require_relative "color"
 require_relative "utils"
 
 class Gouache
   class Stylesheet
-    attr :layer_map
+    attr :styles, :layers, :effects
 
     def initialize styles, base:
       raise TypeError unless base in Stylesheet | nil
-      @layer_map = base&.then{ it.layer_map.dup } || {} # styles computed into sgr code seqs spread into Layer instances for overlaying
-      @styles    = styles&.dup || {}                    # hash with declarations in many formats; will clear this as we compute rules
-      @sels      = []                                   # selector stack to avoid circular refs
-      @styles.transform_keys!(&:to_sym)
-      compute_rule(@styles.first.first) until @styles.empty?
+      base_styles = (base&.styles||{}).transform_keys(&:to_sym)
+      styles      = (styles||{}).transform_keys(&:to_sym)
+      @styles     = base_styles.merge(styles){|k,a,b| [*a, *b] }
+      @computed   = Set[]  # selectors already computed
+      @computing  = Set[]  # selector stack to avoid circular refs
+      @effects    = Hash.new{|h,k| compute_rule(k.to_sym); h[k.to_sym] }  # computes on-demand and merges styles from base when doing it
+      @layers     = Hash.new{|h,k| compute_rule(k.to_sym); h[k.to_sym] }  # same
     end
 
     def merge(*styles) = self.class.new(styles.inject(&:merge), base: self)
@@ -39,19 +40,14 @@ class Gouache
     RX_FN_OKLCH  = /(on_|over_)? oklch\(\s* (#{NNF}) \s*,\s* (#{NNF}(?:max)?|max) \s*,\s* (#{NNF}) \s*\)/x.w
 
     private def compute_decl(x)
-      Layer.from _compute_decl(x)
-    end
-
-    private def _compute_decl(x)
       role = ->{ { on: 48, over: 58, nil => 38 }[$1&.chomp(?_)&.to_sym] }
       case x
       in nil          then []
       in Proc         then x
       in Color        then x
-      in Layer        then x
+      in Layer        then raise # technically harmless but if a layer ends up here we did smth wrong
       in Symbol       then compute_rule(x)
-      in Array        then x.flat_map{ _compute_decl it }.partition{ Color === it }
-                            .then{|cs,rs| [*Color.merge(*cs).flatten.compact, *rs] }
+      in Array        then x.flat_map{ compute_decl it }
       in RU_BASIC     then Color.sgr x
       in RX_BASIC     then Color.sgr x
       in RX_256       then Color.sgr x
@@ -63,34 +59,30 @@ class Gouache
       in RX_FN_256    then Color.sgr [role[], 5, $2]*?;
       in RX_FN_OKLCH  then Color.new role: role[], oklch: $~[2..].map{|s| s =~ /max/ ? s : s.to_f }
       in RU_SGR_NC    then x
-      in RX_INT       then _compute_decl(x.to_i)
-      in RX_SGR       then Gouache.scan_sgr(x).map{ _compute_decl it }
-      in RX_SEL       then compute_rule(x.to_sym)
+      in RX_INT       then compute_decl(x.to_i)
+      in RX_SGR       then Gouache.scan_sgr(x).map{ compute_decl it }
+      in RX_SEL       then compute_decl(x.to_sym)
       end
     end
 
     private def compute_rule(sym)
-      return @layer_map[sym] if @layer_map.key?(sym) && !@styles.key?(sym)
-      raise "circular reference for '#{sym}'" if @sels.member? sym
-      @sels << sym
-      @layer_map[sym] = compute_decl(@styles.delete sym)
-      @sels.delete sym
-      @layer_map[sym]
+      return @styles[sym] if @computed.member?(sym)
+      raise "circular reference for '#{sym}'" if @computing.member? sym
+      @computing << sym
+      styles          = [*compute_decl(@styles[sym])]
+      @styles[sym]    = styles
+      effects, styles = styles.partition{ it in Proc }
+      colors, styles  = styles.partition{ it in Color }
+      colors          = Color.merge(*colors).flatten.compact
+      @layers[sym]    = Layer.from(*colors, *styles)
+      @effects[sym]   = effects
+      @computing.delete sym
+      @computed << sym
+      @styles[sym]
     end
 
-    def tag?(key) = @layer_map.key?(key.to_sym)
-    def [](tag)   = @layer_map[tag.to_sym]
-
-    # for inspection purposes mainly
-    def tags = @layer_map.keys
-    def to_h
-      @layer_map.transform_values do |decl|
-        decl.compact.uniq.map do |slot|
-          next slot.to_sgr if slot.is_a? Color
-          slot
-        end.then{ it.size == 1 ? it[0] : it }
-      end
-    end
+    def tag?(key) = @styles.key?(key.to_sym)
+    def tags      = @styles.keys
 
     BASE = new BASE_STYLES, base: nil
   end

@@ -15,12 +15,13 @@ class Gouache
       @queue    = []             # accumulate sgr params to emit until we have text to style (we collapse to minimal set then)
       @got_sgr  = false          # did we emit sgr at all? used to determine if reset in the end
       @out      = +""
-      enqueue @layers.diffpush @rules[:_base] if @rules.tag? :_base # special rule _base applies to all
+      # special rule _base applies to all
+      enqueue @layers.diffpush @rules.layers[:_base], @rules.effects[:_base] if @rules.tag? :_base
     end
 
     def enqueue(sgr)       = (@queue << sgr; self)
-    def open_tag(tag)      = enqueue @layers.diffpush(@rules[tag], tag)
-    def begin_sgr          = enqueue @layers.diffpush(nil, :@@sgr)
+    def open_tag(tag)      = enqueue @layers.diffpush(@rules.layers[tag], @rules.effects[tag], tag: tag)
+    def begin_sgr          = enqueue @layers.diffpush(nil, tag: :@@sgr)
     def push_sgr(sgr_text) = enqueue @layers.diffpush(Layer.from Gouache.scan_sgr sgr_text)
 
     def end_sgr

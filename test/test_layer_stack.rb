@@ -139,7 +139,7 @@ class TestLayerStack < Minitest::Test
     layer2 = Gouache::Layer.from(31)
     layer3 = Gouache::Layer.from(4)
 
-    @stack.diffpush(layer1, :test)
+    @stack.diffpush(layer1, tag: :test)
     @stack.diffpush(layer2)
     @stack.diffpush(layer3)
     assert_equal 4, @stack.size
@@ -176,10 +176,10 @@ class TestLayerStack < Minitest::Test
     tagged2 = Gouache::Layer.from(2)
     untagged3 = Gouache::Layer.from(32)
 
-    @stack.diffpush(tagged1, :first)
+    @stack.diffpush(tagged1, tag: :first)
     @stack.diffpush(untagged1)
     @stack.diffpush(untagged2)
-    @stack.diffpush(tagged2, :second)
+    @stack.diffpush(tagged2, tag: :second)
     @stack.diffpush(untagged3)
     assert_equal 6, @stack.size
 
@@ -204,7 +204,7 @@ class TestLayerStack < Minitest::Test
   def test_stack_diffpop_until_conditional_logic
     # Test early return when top is already tagged
     tagged = Gouache::Layer.from(1)
-    @stack.diffpush(tagged, :stop)
+    @stack.diffpush(tagged, tag: :stop)
 
     result = @stack.diffpop_until{ it.top.tag }
     assert_equal 2, @stack.size  # Should not pop anything
@@ -216,7 +216,7 @@ class TestLayerStack < Minitest::Test
     untagged1 = Gouache::Layer.from(31)  # no tag
     untagged2 = Gouache::Layer.from(4)   # no tag
 
-    @stack.diffpush(tagged1, :bottom)
+    @stack.diffpush(tagged1, tag: :bottom)
     @stack.diffpush(untagged1)
     @stack.diffpush(untagged2)
     assert_equal 4, @stack.size
@@ -281,7 +281,7 @@ class TestLayerStack < Minitest::Test
 
   def test_layer_tag_attribute
     layer = Gouache::Layer.from(1, 31)
-    @stack.diffpush(layer, :test)
+    @stack.diffpush(layer, tag: :test)
 
     # Tagged layer in stack has tag
     assert_equal :test, @stack.top.tag
@@ -294,8 +294,8 @@ class TestLayerStack < Minitest::Test
     layer1 = Gouache::Layer.from(1)
     layer2 = Gouache::Layer.from(1)
 
-    @stack.diffpush(layer1, :first)
-    @stack.diffpush(layer2, :second)
+    @stack.diffpush(layer1, tag: :first)
+    @stack.diffpush(layer2, tag: :second)
 
     # Tags are independent
     assert_equal :first, @stack[-2].tag
@@ -448,5 +448,74 @@ class TestLayerStack < Minitest::Test
     # Pop dim - should trigger reset+reapply since bold remains
     close_sgr = @stack.diffpop
     assert_equal [22, 1], close_sgr
+  end
+
+  def test_stack_diffpush_with_effects
+    called_with = nil
+    effect = proc { |top, under| called_with = [top, under] }
+
+    layer = Gouache::Layer.from(1)
+    @stack.diffpush(layer, [effect])
+
+    refute_nil called_with
+    assert_instance_of Gouache::LayerProxy, called_with[0]
+    assert_instance_of Gouache::LayerProxy, called_with[1]
+  end
+
+  def test_stack_diffpush_effects_with_nil_layer
+    effect_called = false
+    effect = proc { |top, under| effect_called = true }
+
+    @stack.diffpush(nil, [effect])
+
+    assert effect_called
+  end
+
+  def test_stack_diffpush_multiple_effects
+    call_order = []
+    effect1 = proc { |top, under| call_order << :first }
+    effect2 = proc { |top, under| call_order << :second }
+
+    layer = Gouache::Layer.from(1)
+    @stack.diffpush(layer, [effect1, effect2])
+
+    assert_equal [:first, :second], call_order
+  end
+
+  def test_stack_diffpush_effects_arity_validation
+    zero_arity_effect = proc { "no args" }
+    three_arity_effect = proc { |top, under, extra| "too many args" }
+
+    layer = Gouache::Layer.from(1)
+
+    assert_raises(ArgumentError) { @stack.diffpush(layer, [zero_arity_effect]) }
+    assert_raises(ArgumentError) { @stack.diffpush(layer, [three_arity_effect]) }
+  end
+
+  def test_stack_diffpush_effects_with_tag
+    effect_called = false
+    effect = proc { |top, under| effect_called = true }
+
+    layer = Gouache::Layer.from(1)
+    @stack.diffpush(layer, [effect], tag: :test)
+
+    assert effect_called
+    assert_equal :test, @stack.top.tag
+  end
+
+  def test_stack_diffpush_effects_modify_top_layer
+    effect = proc do |top, under|
+      top.italic = true
+      top.fg = 32
+    end
+
+    base_layer = Gouache::Layer.from(1)
+    @stack.diffpush(base_layer)
+    @stack.diffpush(nil, [effect])
+
+    top = @stack.top
+    assert_equal 3, top[Gouache::Layer::RANGES[:italic].index]
+    assert_equal 32, top[Gouache::Layer::RANGES[:fg].index]
+    assert_equal 1, top[Gouache::Layer::RANGES[:bold].index]
   end
 end

@@ -148,7 +148,8 @@ class Gouache
       Color.new __private: [new_role, sgr_basic, @_256, rgb_, @oklch]
     end
 
-    def self.merge(*colors) = colors.group_by(&:role).transform_values{|cs| cs.inject(&:merge) }.values_at(FG, BG, UL)
+    def self.merge(*colors) = \
+      colors.reverse_each.group_by(&:role).transform_values{|cs| cs.inject(&:merge) }.values_at(FG, BG, UL)
 
     def merge(other)
       raise ArgumentError, "different roles" if role != other.role

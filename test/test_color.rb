@@ -732,6 +732,27 @@ class TestColor < Minitest::Test
     assert_equal 48, bg.role
   end
 
+  def test_merge_class_method_precedence
+    # Test that later colors take precedence in merge
+    early_color = Gouache::Color.rgb(255, 0, 0)    # red RGB
+    later_color = Gouache::Color.rgb(0, 255, 0)    # green RGB
+
+    fg, bg, ul = Gouache::Color.merge(early_color, later_color)
+
+    # Later color should override earlier one
+    assert_equal [0, 255, 0], fg.rgb
+    assert_nil bg
+    assert_nil ul
+
+    # Test with mixed representations - later basic should override RGB
+    rgb_first = Gouache::Color.rgb(255, 0, 0)      # red RGB
+    basic_later = Gouache::Color.sgr(32)           # green basic
+
+    fg, bg, ul = Gouache::Color.merge(rgb_first, basic_later)
+    assert_equal 32, fg.basic
+    assert_equal [255, 0, 0], fg.rgb  # RGB preserved from first color
+  end
+
   def test_merge_class_method_empty
     result = Gouache::Color.merge()
     assert_equal [nil, nil, nil], result

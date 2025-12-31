@@ -82,11 +82,24 @@ class Gouache
 
     # return array of sgr codes to turn on self after other
     def diff(other)
-      # special case: last 2 elems are bold/dim, compare as unit as both are turned off by SGR 22
-      group22 = ->a{ [*a[...-2], a[-2..]] }  # => [..., [bold, dim]]
-      diff = group22[self].zip(group22[other]).filter_map{|a,b| a if a != b }
-      diff[-1, 1] = self.class.prepare_sgr diff[-1] if diff[-1] in Array
-      diff
+      # special case: last 2 elems are bold/dim, we skip them here and handle next
+      diff = self[...-2].zip(other[...-2]).filter_map{|a,b| a if a != b }
+
+      # compare dim/bold as unit as both are turned off by SGR 22
+      bd_old = other[-2..]
+      bd_new = self[-2..]
+      diff.concat case [bd_old, bd_new]
+      in ^bd_new  , ^bd_old  then []                 # same, no change
+      in [ _,   _],[nil,nil] then []                 # falltrhough, no change
+      in [ _,   _], [22, 22] then [22]               # all off
+      in [nil,nil], [ _,  _] then bd_new - [nil]     # maybe something on
+      in [22,  22], [ _,  _] then bd_new - [nil, 22] # maybe something on
+      in [ _,   _], [ 1,  2] then [1, 2] - bd_old    # all on
+      in [ _,   2], [ 1,nil] then [1, 2] - bd_old    # all on
+      in [ 1,   _], [nil, 2] then [1, 2] - bd_old    # all on
+      in [ _,   2], [ 1, 22] then [22, 1]            # (bold?)dim -> bold
+      in [ 1,   _], [22,  2] then [22, 2]            # bold(dim?) -> dim
+      end
     end
 
     # return array of codes to emit for layer

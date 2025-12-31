@@ -305,4 +305,76 @@ class TestEffects < Minitest::Test
     assert result.include?("\e["), "Should contain escape sequences"
   end
 
+  def test_base_effects_bright
+    # Test bright effect converts normal colors (30-37) to bright colors (90-97)
+    result = Gouache[:red, "normal", :bright, "bright"]
+    assert_equal "\e[31mnormal\e[91mbright\e[0m", result
+
+    # Test with other normal colors
+    result = Gouache[:blue, "blue", :bright, "bright blue"]
+    assert_equal "\e[34mblue\e[94mbright blue\e[0m", result
+  end
+
+  def test_base_effects_unbright
+    # Test unbright effect converts bright colors (90-97) to normal colors (30-37)
+    result = Gouache[Gouache::Color.sgr(91), "bright", :unbright, "normal"]
+    assert_equal "\e[91mbright\e[31mnormal\e[0m", result
+
+    # Test with bright blue
+    result = Gouache[Gouache::Color.sgr(94), "bright", :unbright, "normal"]
+    assert_equal "\e[94mbright\e[34mnormal\e[0m", result
+  end
+
+  def test_base_effects_bright_off_alias
+    # Test bright_off is alias for unbright
+    result = Gouache[Gouache::Color.sgr(92), "bright", :bright_off, "normal"]
+    assert_equal "\e[92mbright\e[32mnormal\e[0m", result
+  end
+
+  def test_base_effects_bright_no_effect_on_non_colors
+    # Test bright effect has no effect on non-standard colors or backgrounds
+    result = Gouache[Gouache::Color.sgr(42), "bg", :bright, "still bg"]
+    assert_equal "\e[42mbgstill bg\e[0m", result
+  end
+
+  def test_base_effects_bright_with_rgb_colors
+    # Test bright effect only affects basic ANSI colors, not RGB
+    rgb_color = Gouache::Color.rgb(255, 0, 0)
+    result = Gouache[rgb_color, "rgb", :bright, "still rgb"]
+    expected = "\e[38;2;255;0;0mrgbstill rgb\e[0m"
+    assert_equal expected, result
+  end
+
+  def test_base_effects_unbright_no_effect_on_normal_colors
+    # Test unbright has no effect on normal colors (30-37)
+    result = Gouache[:red, "normal", :unbright, "still normal"]
+    assert_equal "\e[31mnormalstill normal\e[0m", result
+  end
+
+  def test_base_effects_bright_unbright_roundtrip
+    # Test bright then unbright returns to original color
+    result = Gouache[:green, "start", :bright, "bright", :unbright, "back"]
+    assert_equal "\e[32mstart\e[92mbright\e[32mback\e[0m", result
+  end
+
+  def test_base_effects_bright_with_dim
+    # Test bright effect with dim on - should emit dim_off
+    result = Gouache[:red, :dim, "dimmed", :bright, "bright"]
+    assert_equal "\e[22;31;2mdimmed\e[22;91mbright\e[0m", result
+  end
+
+  def test_base_effects_bright_with_stylesheet_indirection
+    # Test bright effect with Color object via stylesheet - should work
+    go = Gouache.new(bright_color: Gouache::Color.sgr(91))
+    result = go[:red, "normal", :bright, "bright", :bright_color, "styled"]
+    assert_equal "\e[31mnormal\e[91mbrightstyled\e[0m", result
+  end
+
+  def test_base_effects_unbright_with_stylesheet_indirection
+    # Test unbright effect with Color object via stylesheet - should work
+    go = Gouache.new(normal_color: Gouache::Color.sgr(31))
+    result = go[Gouache::Color.sgr(91), "bright", :unbright, "normal", :normal_color, "styled"]
+    assert_equal "\e[91mbright\e[31mnormalstyled\e[0m", result
+  end
+
 end

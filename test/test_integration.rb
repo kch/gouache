@@ -1080,6 +1080,24 @@ class TestIntegration < Minitest::Test
     assert_equal expected, result
   end
 
+  def test_nested_styles_with_effects_integration
+    # Test that effects from nested styles are properly combined
+    bold_effect = proc { |top, under| top.bold = true }
+    italic_effect = proc { |top, under| top.italic = true }
+
+    go = Gouache.new(
+      make_bold: [31, bold_effect],      # red with bold effect
+      make_italic: [italic_effect]       # italic effect only
+    )
+
+    # Nest the styles - both effects should be applied
+    result = go[:make_bold, "bold red ", [:make_italic, "bold red italic"]]
+
+    # Verify both effects are active in nested section
+    expected = "\e[22;31;1mbold red \e[3mbold red italic\e[0m"
+    assert_equal expected, result
+  end
+
 end
 
 class TestIntegrationWithRefinement < Minitest::Test

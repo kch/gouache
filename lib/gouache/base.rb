@@ -74,6 +74,9 @@ class Gouache
     strikeout_off:      29,
     strikethrough_off:  29,
     overline_off:       55,
+    bright:             [:dim_off, ->x { x.fg = Color.sgr x.fg.sgr + 60 if x.fg&.sgr in 30..37 }],
+    unbright:           ->x { x.fg = Color.sgr x.fg.sgr - 60 if x.fg&.sgr in 90..97 },
+    bright_off:         :unbright,
   }
 
 end

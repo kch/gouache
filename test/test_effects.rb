@@ -238,7 +238,7 @@ class TestEffects < Minitest::Test
     result = go[:base, "text", :with_effect, "styled"]
 
     # Check exact emitted string from effects pipeline
-    expected = "\e[31mtext\e[22;41;3;1mstyled\e[0m"
+    expected = "\e[31mtext\e[41;3;1mstyled\e[0m"
     assert_equal expected, result
   end
 
@@ -360,7 +360,7 @@ class TestEffects < Minitest::Test
   def test_base_effects_bright_with_dim
     # Test bright effect with dim on - should emit dim_off
     result = Gouache[:red, :dim, "dimmed", :bright, "bright"]
-    assert_equal "\e[22;31;2mdimmed\e[22;91mbright\e[0m", result
+    assert_equal "\e[31;2mdimmed\e[22;91mbright\e[0m", result
   end
 
   def test_base_effects_bright_with_stylesheet_indirection

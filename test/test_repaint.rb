@@ -44,7 +44,7 @@ class TestRepaint < Minitest::Test
     # Multiple reset codes should all be transformed to specific resets
     problematic = "start \e[1mbold\e[0m middle \e[31mred\e[0m end"
     result = @go.repaint(problematic)
-    expected = "start \e[22;1mbold\e[22m middle \e[31mred\e[39m end\e[0m"  # First 0m -> 22m, second 0m -> 39m
+    expected = "start \e[1mbold\e[22m middle \e[31mred\e[39m end\e[0m"  # First 0m -> 22m, second 0m -> 39m
     assert_equal expected, result
   end
 
@@ -52,7 +52,7 @@ class TestRepaint < Minitest::Test
     # Complex multi-code SGR sequences should be properly ordered and reset incrementally
     problematic = "text \e[1;31;4mbold red underline\e[0m end"
     result = @go.repaint(problematic)
-    expected = "text \e[22;31;4;1mbold red underline\e[22;39;24m end\e[0m"  # 0m -> specific closes for each style
+    expected = "text \e[31;4;1mbold red underline\e[22;39;24m end\e[0m"  # 0m -> specific closes for each style
     assert_equal expected, result
   end
 
@@ -85,7 +85,7 @@ class TestRepaint < Minitest::Test
     outer = "outer #{inner.wrap} \e[31mred\e[0m"
     text_with_nested = "start #{outer.wrap} end"
     result = @go.repaint(text_with_nested)
-    expected = "start outer inner \e[22;1mbold\e[22m \e[31mred\e[39m end\e[0m"
+    expected = "start outer inner \e[1mbold\e[22m \e[31mred\e[39m end\e[0m"
     assert_equal expected, result
   end
 
@@ -101,7 +101,7 @@ class TestRepaint < Minitest::Test
     # String starting with SGR codes should be processed with bold prefix
     problematic = "\e[1mbold start\e[0m normal end"
     result = @go.repaint(problematic)
-    expected = "\e[22;1mbold start\e[22m normal end\e[0m"  # Bold gets 22 prefix, 0m -> 22m, final 0m added
+    expected = "\e[1mbold start\e[22m normal end\e[0m"  # Bold gets 22 prefix, 0m -> 22m, final 0m added
     assert_equal expected, result
   end
 
@@ -117,7 +117,7 @@ class TestRepaint < Minitest::Test
     # Mix of problematic and non-problematic SGR codes - only 0m gets transformed
     mixed = "text \e[31mred \e[1mbold\e[22m unbold \e[39m default\e[0m reset"
     result = @go.repaint(mixed)
-    expected = "text \e[31mred \e[22;1mbold\e[22m unbold \e[39m default reset\e[0m"  # Only the final 0m removed, rest preserved
+    expected = "text \e[31mred \e[1mbold\e[22m unbold \e[39m default reset\e[0m"  # Only the final 0m removed, rest preserved
     assert_equal expected, result
   end
 

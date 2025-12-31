@@ -1457,7 +1457,7 @@ class TestStylesheet < Minitest::Test
     result = go[:complex_style, "styled text"]
 
     # Should contain proper escape sequences for bold, colors, and italic
-    assert_includes result, "\e[22;38;2;255;0;0;48;2;0;0;255;3;1m"
+    assert_includes result, "\e[38;2;255;0;0;48;2;0;0;255;3;1m"
     assert_includes result, "styled text"
   end
 
@@ -1492,7 +1492,7 @@ class TestStylesheet < Minitest::Test
     result = go[:red_with_effect, "text"]
 
     # Should contain red color and bold effect
-    assert_includes result, "\e[22;38;2;255;0;0;1m"
+    assert_includes result, "\e[38;2;255;0;0;1m"
     assert_includes result, "text"
   end
 

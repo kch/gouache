@@ -21,7 +21,7 @@ class TestEmitter < Minitest::Test
     @emitter.open_tag(:bold)
     @emitter << "text"
     result = @emitter.emit!
-    assert_equal "\e[22;1mtext\e[0m", result
+    assert_equal "\e[1mtext\e[0m", result
   end
 
   def test_close_tag_no_overlap_with_bold
@@ -44,7 +44,7 @@ class TestEmitter < Minitest::Test
 
   def test_open_tag_with_text
     result = (@emitter.open_tag(:bold) << "text").emit!
-    assert_equal "\e[22;1mtext\e[0m", result
+    assert_equal "\e[1mtext\e[0m", result
   end
 
   def test_multiple_tags_with_text
@@ -55,7 +55,7 @@ class TestEmitter < Minitest::Test
     @emitter.close_tag
 
     result = @emitter.emit!
-    assert_equal "\e[22;31;1mtext\e[0m", result
+    assert_equal "\e[31;1mtext\e[0m", result
   end
 
   def test_push_sgr_single_code
@@ -69,7 +69,7 @@ class TestEmitter < Minitest::Test
     @emitter.push_sgr("1;31") # bold red
     @emitter << "text"
     result = @emitter.emit!
-    assert_equal "\e[22;31;1mtext\e[0m", result
+    assert_equal "\e[31;1mtext\e[0m", result
   end
 
   def test_end_sgr_closes_sgr_block
@@ -81,7 +81,7 @@ class TestEmitter < Minitest::Test
     @emitter << "text"
     result = @emitter.emit!
     # Should have bold but not the red/underline from closed sgr block
-    assert_equal "\e[22;1mtext\e[0m", result
+    assert_equal "\e[1mtext\e[0m", result
   end
 
   def test_chaining_returns_self
@@ -131,7 +131,7 @@ class TestEmitter < Minitest::Test
     @emitter << "text"
     result = @emitter.emit!
 
-    assert_equal "\e[22;1mtext\e[0m", result
+    assert_equal "\e[1mtext\e[0m", result
   end
 
   def test_emit_no_reset_when_no_sgr
@@ -149,7 +149,7 @@ class TestEmitter < Minitest::Test
     @emitter << "text"
 
     result = @emitter.emit!
-    assert_equal "\e[22;31;4;1mtext\e[0m", result
+    assert_equal "\e[31;4;1mtext\e[0m", result
   end
 
   def test_empty_text_ignored
@@ -158,7 +158,7 @@ class TestEmitter < Minitest::Test
     @emitter << "text"
 
     result = @emitter.emit!
-    assert_equal "\e[22;1mtext\e[0m", result
+    assert_equal "\e[1mtext\e[0m", result
   end
 
   def test_custom_styles_via_gouache
@@ -191,7 +191,7 @@ class TestEmitter < Minitest::Test
     @emitter.close_tag            # close bold tag
 
     result = @emitter.emit!
-    assert_equal "\e[22;31;1mtext1\e[39mtext2\e[0m", result
+    assert_equal "\e[31;1mtext1\e[39mtext2\e[0m", result
   end
 
   def test_multiple_sgr_pushes
@@ -201,14 +201,14 @@ class TestEmitter < Minitest::Test
     @emitter << "text"
 
     result = @emitter.emit!
-    assert_equal "\e[22;31;4;1mtext\e[0m", result
+    assert_equal "\e[31;4;1mtext\e[0m", result
   end
 
   def test_scan_sgr_integration
     @emitter.push_sgr("1;31;4")  # bold red underline as string
     @emitter << "text"
     result = @emitter.emit!
-    assert_equal "\e[22;31;4;1mtext\e[0m", result
+    assert_equal "\e[31;4;1mtext\e[0m", result
   end
 
   def test_operations_work_with_text
@@ -216,7 +216,7 @@ class TestEmitter < Minitest::Test
     @emitter << "text"
 
     result = @emitter.emit!
-    assert_equal "\e[22;1mtext\e[0m", result
+    assert_equal "\e[1mtext\e[0m", result
   end
 
   def test_layered_tag_behavior
@@ -227,7 +227,7 @@ class TestEmitter < Minitest::Test
     @emitter.close_tag  # close bold
 
     result = @emitter.emit!
-    assert_equal "\e[22;31;1mtext\e[0m", result
+    assert_equal "\e[31;1mtext\e[0m", result
   end
 
   def test_sgr_without_tag_ends_cleanly
@@ -253,7 +253,7 @@ class TestEmitter < Minitest::Test
     @emitter.close_tag
 
     result = @emitter.emit!
-    assert_equal "\e[22;4;1mstyled\e[0m", result
+    assert_equal "\e[4;1mstyled\e[0m", result
     refute result.frozen?
   end
 
@@ -279,7 +279,7 @@ class TestEmitter < Minitest::Test
     # All calls should return the same cached result
     assert_same first, second
     assert_same second, third
-    assert_equal "\e[22;1mtest\e[0m", first
+    assert_equal "\e[1mtest\e[0m", first
   end
 
   def test_emitter_state_after_emit_is_finalized
@@ -288,7 +288,7 @@ class TestEmitter < Minitest::Test
     @emitter.close_tag
 
     result = @emitter.emit!
-    assert_equal "\e[22;1mstyled\e[0m", result
+    assert_equal "\e[1mstyled\e[0m", result
 
     # Emitter should be finalized and operations should fail
     assert_raises(NoMethodError) { @emitter << "more" }
@@ -304,7 +304,7 @@ class TestEmitter < Minitest::Test
     # Open bold tag
     @emitter.open_tag(:bold)
     @emitter << "bold "
-    expected << "\e[22;1mbold "
+    expected << "\e[1mbold "
 
     # Open red tag
     @emitter.open_tag(:red)
@@ -379,7 +379,7 @@ class TestEmitter < Minitest::Test
     @emitter.open_tag(:underline)  # should work now
     @emitter << "text"
     result = @emitter.emit!
-    assert_equal "\e[22;31;4;1mtext\e[0m", result
+    assert_equal "\e[31;4;1mtext\e[0m", result
   end
 
   def test_close_tag_closes_sgr_blocks
@@ -391,7 +391,7 @@ class TestEmitter < Minitest::Test
     @emitter << "text"
     @emitter.close_tag       # should close all sgr blocks inside
     result = @emitter.emit!
-    assert_equal "\e[22;31;4;1mtext\e[0m", result
+    assert_equal "\e[31;4;1mtext\e[0m", result
   end
 
   def test_begin_sgr_creates_new_block
@@ -467,7 +467,7 @@ class TestEmitter < Minitest::Test
     @emitter.end_sgr         # close bold block
 
     result = @emitter.emit!
-    assert_equal "\e[22;31;4;1mdeep\e[0m", result
+    assert_equal "\e[31;4;1mdeep\e[0m", result
   end
 
   def test_begin_sgr_then_close_tag_cleanup
@@ -478,7 +478,7 @@ class TestEmitter < Minitest::Test
     @emitter.close_tag       # should clean up open sgr block
 
     result = @emitter.emit!
-    assert_equal "\e[22;31;1mtext\e[0m", result
+    assert_equal "\e[31;1mtext\e[0m", result
   end
 
   def test_multiple_begin_sgr_without_end_sgr
@@ -520,7 +520,7 @@ class TestEmitter < Minitest::Test
     @emitter.end_sgr
 
     result = @emitter.emit!
-    assert_equal "\e[22;31;1mtext\e[0m", result
+    assert_equal "\e[31;1mtext\e[0m", result
   end
 
   def test_sgr_blocks_inside_nested_tags
@@ -534,7 +534,7 @@ class TestEmitter < Minitest::Test
     @emitter.close_tag
 
     result = @emitter.emit!
-    assert_equal "\e[22;31;4;1mtext\e[0m", result
+    assert_equal "\e[31;4;1mtext\e[0m", result
   end
 
   def test_complex_tag_sgr_block_interleaving
@@ -549,7 +549,7 @@ class TestEmitter < Minitest::Test
     @emitter.close_tag       # close bold
 
     result = @emitter.emit!
-    assert_equal "\e[22;31;7;4;1mcomplex\e[0m", result
+    assert_equal "\e[31;7;4;1mcomplex\e[0m", result
   end
 
   def test_method_chaining_with_new_methods
@@ -560,7 +560,7 @@ class TestEmitter < Minitest::Test
     assert_same @emitter, result
 
     final_result = @emitter.emit!
-    assert_equal "\e[22;31;1mchained\e[0m", final_result
+    assert_equal "\e[31;1mchained\e[0m", final_result
   end
 
   def test_unmatched_end_sgr_is_noop
@@ -604,7 +604,7 @@ class TestEmitter < Minitest::Test
     @emitter << "bold"
 
     result = @emitter.emit!
-    assert_equal "\e[22;1mbold \e[1;2mbold-dim \e[22;1mbold\e[0m", result
+    assert_equal "\e[1mbold \e[2mbold-dim \e[22;1mbold\e[0m", result
   end
 
   def test_dim_bold_alternating
@@ -616,7 +616,7 @@ class TestEmitter < Minitest::Test
     @emitter << "dim"
 
     result = @emitter.emit!
-    assert_equal "\e[22;2mdim \e[1;2mdim-bold \e[22;2mdim\e[0m", result
+    assert_equal "\e[2mdim \e[1mdim-bold \e[22;2mdim\e[0m", result
   end
 
   def test_bold_dim_with_intermediate_styles
@@ -636,7 +636,7 @@ class TestEmitter < Minitest::Test
     @emitter << "bold"
 
     result = @emitter.emit!
-    assert_equal "\e[22;1mbold \e[31mbold-red \e[4mbold-red-underline \e[1;2mbold-red-underline-dim \e[22;1mbold-red-underline \e[24mbold-red \e[39mbold\e[0m", result
+    assert_equal "\e[1mbold \e[31mbold-red \e[4mbold-red-underline \e[2mbold-red-underline-dim \e[22;1mbold-red-underline \e[24mbold-red \e[39mbold\e[0m", result
   end
 
   def test_bold_other_stuff_dim_pop_sequence
@@ -719,7 +719,7 @@ class TestEmitter < Minitest::Test
     @emitter << "remove-bold"
 
     result = @emitter.emit!
-    assert_equal "\e[22;32;3;1mbold-green-italic \e[1;2madd-dim \e[34mchange-to-blue \e[4madd-underline \e[24mremove-underline \e[32mback-to-green \e[22;1mremove-dim \e[23mremove-italic \e[39mremove-green \e[22mremove-bold\e[0m", result
+    assert_equal "\e[32;3;1mbold-green-italic \e[2madd-dim \e[34mchange-to-blue \e[4madd-underline \e[24mremove-underline \e[32mback-to-green \e[22;1mremove-dim \e[23mremove-italic \e[39mremove-green \e[22mremove-bold\e[0m", result
   end
 
   def test_sgr_bold_dim_interactions
@@ -740,7 +740,7 @@ class TestEmitter < Minitest::Test
     @emitter << "plain"
 
     result = @emitter.emit!
-    assert_equal "\e[22;1msgr-bold \e[1;2mtag-dim \e[31madd-red \e[22;39;1mremove-dim \e[22mplain\e[0m", result
+    assert_equal "\e[1msgr-bold \e[2mtag-dim \e[31madd-red \e[22;39;1mremove-dim \e[22mplain\e[0m", result
   end
 
   def test_nested_bold_dim_tags
@@ -761,7 +761,7 @@ class TestEmitter < Minitest::Test
     @emitter << "plain"
 
     result = @emitter.emit!
-    assert_equal "\e[22;1mdouble-bold \e[1;2mbold-bold-dim \e[22;1mback-to-double-bold single-bold \e[22mplain\e[0m", result
+    assert_equal "\e[1mdouble-bold \e[2mbold-bold-dim \e[22;1mback-to-double-bold single-bold \e[22mplain\e[0m", result
   end
 
   def test_bold_dim_no_text_compaction
@@ -801,7 +801,7 @@ class TestEmitter < Minitest::Test
     @emitter << "bold2"  # Forces SGR for back to bold
 
     result = @emitter.emit!
-    assert_equal "\e[22;1mbold1\e[1;2mbold-dim\e[22;1mbold2\e[0m", result
+    assert_equal "\e[1mbold1\e[2mbold-dim\e[22;1mbold2\e[0m", result
   end
 
   def test_bold_dim_no_text_between_operations
@@ -874,7 +874,7 @@ class TestEmitter < Minitest::Test
     @emitter << "back-to-bold"
 
     result = @emitter.emit!
-    assert_equal "\e[22;1mbold \e[31;1;2mbold-dim-red \e[22;39;1mback-to-bold\e[0m", result
+    assert_equal "\e[1mbold \e[31;2mbold-dim-red \e[22;39;1mback-to-bold\e[0m", result
   end
 
   def test_flush_uses_fallback_truecolor
@@ -1058,13 +1058,13 @@ class TestEmitter < Minitest::Test
     emitter.close_tag
     emitter << "more plain"
     result = emitter.emit!
-    assert_equal "\e[31mplain text\e[22;1mbold text\e[22mmore plain\e[0m", result
+    assert_equal "\e[31mplain text\e[1mbold text\e[22mmore plain\e[0m", result
   end
 
   def test_base_style_with_nested_tags
     # _base style should interact properly with nested styling
     result = Gouache.new(_base: 35) { self << "start"; bold { self << "middle"; italic("end") } }
-    assert_equal "\e[35mstart\e[22;1mmiddle\e[3mend\e[0m", result
+    assert_equal "\e[35mstart\e[1mmiddle\e[3mend\e[0m", result
   end
 
   def test_eachline_disabled_no_newline_processing
@@ -1139,7 +1139,7 @@ class TestEmitter < Minitest::Test
     emitter.close_tag
     emitter << "just blue"
     result = emitter.emit!
-    expected = "\e[34mblue\e[0m\n\e[22;34;1mbold blue\e[0m\n\e[34mjust blue\e[0m"
+    expected = "\e[34mblue\e[0m\n\e[34;1mbold blue\e[0m\n\e[34mjust blue\e[0m"
     assert_equal expected, result
   end
 
@@ -1169,7 +1169,7 @@ class TestEmitter < Minitest::Test
     emitter << "red bold\nstill red bold"
     emitter.end_sgr
     result = emitter.emit!
-    expected = "\e[22;31;1mred bold\e[0m\n\e[22;31;1mstill red bold\e[0m"
+    expected = "\e[31;1mred bold\e[0m\n\e[31;1mstill red bold\e[0m"
     assert_equal expected, result
   end
 
@@ -1295,7 +1295,7 @@ class TestEmitter < Minitest::Test
     result = emitter.emit!
 
     # Should have base red+bold, then add green+italic
-    expected = "\e[22;31;1mbase \e[32;3mstyled\e[0m"
+    expected = "\e[31;1mbase \e[32;3mstyled\e[0m"
     assert_equal expected, result
   end
 

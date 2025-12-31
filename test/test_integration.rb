@@ -85,7 +85,7 @@ class TestIntegration < Minitest::Test
 
     # Test error style
     result = go[:error, "Critical error"]
-    expected = "\e[22;31;58;2;255;0;0;1mCritical error\e[0m"
+    expected = "\e[31;58;2;255;0;0;1mCritical error\e[0m"
     assert_equal expected, result
 
     # Test warning with both italic and underline color
@@ -136,7 +136,7 @@ class TestIntegration < Minitest::Test
   def test_layered_composition_with_underline_colors
     # Test incremental styling changes
     result = @go["Start ", :bold, "bold ", @C.over_rgb(255, 0, 0), "with underline color ", :italic, "and italic"]
-    expected = "Start \e[22;1mbold \e[58;2;255;0;0mwith underline color \e[3mand italic\e[0m"
+    expected = "Start \e[1mbold \e[58;2;255;0;0mwith underline color \e[3mand italic\e[0m"
     assert_equal expected, result
   end
 
@@ -182,7 +182,7 @@ class TestIntegration < Minitest::Test
       ]
     ]
 
-    expected = "Start\e[22;58;2;255;0;0;1mred underline\e[58;2;0;255;0;3mgreen underline\e[58;2;0;0;255;1;2mblue underline\e[0m"
+    expected = "Start\e[58;2;255;0;0;1mred underline\e[58;2;0;255;0;3mgreen underline\e[58;2;0;0;255;2mblue underline\e[0m"
     assert_equal expected, result
   end
 
@@ -334,7 +334,7 @@ class TestIntegration < Minitest::Test
 
     assert_includes warn_result, "38;2;255;165;0"       # orange foreground
     assert_includes warn_result, "58;2;255;140;0"       # dark orange underline
-    assert_includes warn_result, "\e[22;"               # bold reset prefix
+    assert_includes warn_result, "\e[38;2;255;165;0;58;2;255;140;0;1m"
 
     assert_includes error_result, "38;2;255;69;0"       # red-orange foreground
     assert_includes error_result, "58;2;220;20;60"      # crimson underline
@@ -429,7 +429,7 @@ class TestIntegration < Minitest::Test
       }
     }
 
-    expected = "\e[22;34;1mnested blue " +
+    expected = "\e[34;1mnested blue " +
                "\e[31mplain red bold " +
                "\e[32;3mgreen italic " +
                "\e[31;4munderlined green italic" +
@@ -473,7 +473,7 @@ class TestIntegration < Minitest::Test
     ]
 
     expected = "prefix " +
-               "\e[22;38;2;255;100;50;48;2;50;50;200;58;2;0;255;100;1mbold colored " +
+               "\e[38;2;255;100;50;48;2;50;50;200;58;2;0;255;100;1mbold colored " +
                "\e[3mitalic text " +
                "\e[9mstruck italic" +
                "\e[22;23;29m suffix" +
@@ -581,7 +581,7 @@ class TestIntegration < Minitest::Test
       }
     }
 
-    expected = "\e[22;38;2;253;204;0;48;2;83;0;0;1mdefault " +
+    expected = "\e[38;2;253;204;0;48;2;83;0;0;1mdefault " +
                "\e[38;2;255;215;0;3mgolden " +
                "\e[38;2;192;192;192;58;2;128;128;128msilver overlay" +
                "\e[0m"
@@ -712,7 +712,7 @@ class TestIntegration < Minitest::Test
 
     # Repaint removes markers and fixes SGR sequences
     clean_result = go.repaint(wrapped_string)
-    expected_clean = "xx \e[22;34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    expected_clean = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
     assert_equal expected_clean, clean_result
   end
 
@@ -781,8 +781,8 @@ class TestIntegration < Minitest::Test
     log_line = "[#{timestamp}] #{level} #{component}: #{message}"
     final_output = go.repaint(log_line)
 
-    expected = "[\e[22;2m2024-01-15 10:30:45\e[22m] " +
-               "\e[22;31;1mERROR\e[22;39m " +
+    expected = "[\e[2m2024-01-15 10:30:45\e[22m] " +
+               "\e[31;1mERROR\e[22;39m " +
                "\e[36mAuthService\e[39m: " +
                "\e[37mFailed to authenticate user \e[33mjohn.doe\e[0m"
     assert_equal expected, final_output
@@ -795,9 +795,9 @@ class TestIntegration < Minitest::Test
     # Without wrap - broken nested styling
     green_text = "green"
     blue_bold_text = "blue #{"\e[32m#{green_text}\e[39m"} bold"
-    red_result = "\e[31mxx \e[22;34;1m#{blue_bold_text}\e[22m xx\e[0m"
+    red_result = "\e[31mxx \e[34;1m#{blue_bold_text}\e[22m xx\e[0m"
 
-    expected_broken = "\e[31mxx \e[22;34;1mblue \e[32mgreen\e[39m bold\e[22m xx\e[0m"
+    expected_broken = "\e[31mxx \e[34;1mblue \e[32mgreen\e[39m bold\e[22m xx\e[0m"
     assert_equal expected_broken, red_result
 
     # With wrap - preserved styling
@@ -812,7 +812,7 @@ class TestIntegration < Minitest::Test
 
     # With repaint - clean final output
     repainted = go.repaint(wrapped_result)
-    expected_repainted = "xx \e[22;34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    expected_repainted = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
     assert_equal expected_repainted, repainted
   end
 
@@ -962,14 +962,14 @@ class TestIntegration < Minitest::Test
   def test_eachline_with_complex_styling
     go = Gouache.new(eachline: true)
     result = go[:red, :bold, "bold red\nstill bold red"]
-    expected = "\e[22;31;1mbold red\e[0m\n\e[22;31;1mstill bold red\e[0m"
+    expected = "\e[31;1mbold red\e[0m\n\e[31;1mstill bold red\e[0m"
     assert_equal expected, result
   end
 
   def test_eachline_nested_array_structure
     go = Gouache.new(eachline: true)
     result = go[:blue, ["some\nblue", [:bold, "text\nwith"], "\nbold"]]
-    expected = "\e[34msome\e[0m\n\e[34mblue\e[22;1mtext\e[0m\n\e[22;34;1mwith\e[22m\e[0m\n\e[34mbold\e[0m"
+    expected = "\e[34msome\e[0m\n\e[34mblue\e[1mtext\e[0m\n\e[34;1mwith\e[22m\e[0m\n\e[34mbold\e[0m"
     assert_equal expected, result
   end
 
@@ -1046,7 +1046,7 @@ class TestIntegration < Minitest::Test
   def test_eachline_custom_separator_with_styling
     go = Gouache.new(eachline: " :: ")
     result = go[:blue, :bold, "styled :: text :: here"]
-    expected = "\e[22;34;1mstyled\e[0m :: \e[22;34;1mtext\e[0m :: \e[22;34;1mhere\e[0m"
+    expected = "\e[34;1mstyled\e[0m :: \e[34;1mtext\e[0m :: \e[34;1mhere\e[0m"
     assert_equal expected, result
   end
 
@@ -1094,7 +1094,7 @@ class TestIntegration < Minitest::Test
     result = go[:make_bold, "bold red ", [:make_italic, "bold red italic"]]
 
     # Verify both effects are active in nested section
-    expected = "\e[22;31;1mbold red \e[3mbold red italic\e[0m"
+    expected = "\e[31;1mbold red \e[3mbold red italic\e[0m"
     assert_equal expected, result
   end
 
@@ -1128,7 +1128,7 @@ class TestWrapIntegrationWithRefinement < Minitest::Test
   def test_wrap_refinement_nested_string_methods
     # Test the user example with string refinements and wrap
     result_without_wrap = "xx #{"blue #{"green".green} bold".blue.bold} xx".red
-    expected_broken = "\e[31mxx \e[22;34;1mblue \e[32mgreen\e[39m bold\e[22m xx\e[0m"
+    expected_broken = "\e[31mxx \e[34;1mblue \e[32mgreen\e[39m bold\e[22m xx\e[0m"
     assert_equal expected_broken, result_without_wrap
 
     # With wrap - preserved styling with markers
@@ -1138,7 +1138,7 @@ class TestWrapIntegrationWithRefinement < Minitest::Test
 
     # With repaint - clean final output
     final_result = result_with_wrap.repaint
-    expected_clean = "xx \e[22;34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    expected_clean = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
     assert_equal expected_clean, final_result
   end
 end

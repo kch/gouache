@@ -271,7 +271,6 @@ class TestLayerStack < Minitest::Test
 
     # Push should return codes to get to new state
     open_codes = @stack.diffpush(bold)
-    assert_includes open_codes, 22  # reset
     assert_includes open_codes, 1   # bold
 
     # Pop should return codes to get back to previous state
@@ -319,11 +318,11 @@ class TestLayerStack < Minitest::Test
 
     # Push bold
     open_sgr = @stack.diffpush(bold)
-    assert_equal [22, 1], open_sgr
+    assert_equal [1], open_sgr
 
     # Push dim on top of bold
     open_sgr = @stack.diffpush(dim)
-    assert_equal [1, 2], open_sgr
+    assert_equal [2], open_sgr
 
     # Pop back to bold
     close_sgr = @stack.diffpop
@@ -400,7 +399,7 @@ class TestLayerStack < Minitest::Test
 
     # Push bold over dim+red
     open_sgr = @stack.diffpush(bold)
-    assert_equal [1, 2], open_sgr
+    assert_equal [1], open_sgr
 
     # Pop bold
     close_sgr = @stack.diffpop

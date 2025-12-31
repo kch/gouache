@@ -364,7 +364,7 @@ class TestGouache < Minitest::Test
     # Class new with custom styles and block should use the styles when enabled
     result = Gouache.new(styles: {z: 1}) { it.z("foo") }
     assert_instance_of String, result
-    assert_equal "\e[22;1mfoo\e[0m", result
+    assert_equal "\e[1mfoo\e[0m", result
   end
 
   def test_class_new_with_block_custom_styles_disabled

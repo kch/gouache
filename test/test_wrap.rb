@@ -167,7 +167,7 @@ class TestWrap < Minitest::Test
     wrapped_result = "xx #{outer_wrapped} xx"
     final_result = go.repaint(wrapped_result)
 
-    expected_clean = "xx \e[22;34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    expected_clean = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
     assert_equal expected_clean, final_result
 
     # Should not contain wrap markers

@@ -30,17 +30,17 @@ class TestBuilder < Minitest::Test
 
   def test_chaining_level_1
     result = @gouache.red.bold("foo")
-    assert_equal "\e[22;31;1mfoo\e[0m", result
+    assert_equal "\e[31;1mfoo\e[0m", result
   end
 
   def test_chaining_level_2
     result = @gouache.red.bold.underline("foo")
-    assert_equal "\e[22;31;4;1mfoo\e[0m", result
+    assert_equal "\e[31;4;1mfoo\e[0m", result
   end
 
   def test_chaining_level_3
     result = @gouache.red.bold.underline.italic("foo")
-    assert_equal "\e[22;31;3;4;1mfoo\e[0m", result
+    assert_equal "\e[31;3;4;1mfoo\e[0m", result
   end
 
   def test_block_with_it_parameter
@@ -77,8 +77,8 @@ class TestBuilder < Minitest::Test
       x << "plain_red_text"
     }
 
-    expected = "\e[22;34;3;7;1mwow" +
-               "\e[35;23;27;9;1;2mdim_strike" +
+    expected = "\e[34;3;7;1mwow" +
+               "\e[35;23;27;9;2mdim_strike" +
                "\e[22;32;29;1mgreen_text" +
                "\e[33myellow_text" +
                "\e[31mplain_red_text" +
@@ -185,7 +185,7 @@ class TestBuilder < Minitest::Test
       a.underline("level_1_content")
     }
 
-    expected = "\e[22;36;1mdeep_nested_content" +
+    expected = "\e[36;1mdeep_nested_content" +
                "\e[37mlevel_4_content" +
                "\e[31;4mlevel_1_content" +
                "\e[0m"
@@ -203,7 +203,7 @@ class TestBuilder < Minitest::Test
       x << "plain_text_in_red_bold"
     }
 
-    expected = "\e[22;32;1mgreen_text" +
+    expected = "\e[32;1mgreen_text" +
                "\e[33myellow_in_blue" +
                "\e[34;3mitalic_in_blue" +
                "\e[31;23mplain_text_in_red_bold" +
@@ -241,7 +241,7 @@ class TestBuilder < Minitest::Test
       a.cyan("level_1_content")
     }
 
-    expected = "\e[22;35;1mnested_content" +
+    expected = "\e[35;1mnested_content" +
                "\e[36mlevel_1_content" +
                "\e[0m"
     assert_equal expected, result
@@ -316,45 +316,45 @@ class TestBuilder < Minitest::Test
   def test_builder_method_with_array_containing_symbols
     # Array with symbol tags should nest properly within builder method context
     result = @gouache.red([:bold, "text"])
-    assert_equal "\e[22;31;1mtext\e[0m", result
+    assert_equal "\e[31;1mtext\e[0m", result
   end
 
   def test_builder_method_with_nested_arrays
     # Deeply nested array structures should flatten and compile correctly
     result = @gouache.red([["nested", [:bold, "text"]]])
-    assert_equal "\e[31mnested\e[22;1mtext\e[0m", result
+    assert_equal "\e[31mnested\e[1mtext\e[0m", result
   end
 
   def test_builder_method_mixed_string_and_array
     # Builder methods should accept mixed string and array arguments
     result = @gouache.red("prefix", [:bold, "bold"])
-    assert_equal "\e[31mprefix\e[22;1mbold\e[0m", result
+    assert_equal "\e[31mprefix\e[1mbold\e[0m", result
   end
 
   def test_builder_method_with_chained_arrays
     # Chained builder methods should handle arrays with proper style combination
     result = @gouache.red.bold([:italic, "text"])
-    assert_equal "\e[22;31;3;1mtext\e[0m", result
+    assert_equal "\e[31;3;1mtext\e[0m", result
   end
 
   def test_builder_method_with_complex_nested_array
     # Complex array: strings, symbols, nested arrays with multiple style changes
     array = ["start", [:bold, "bold"], "middle", [:red, [:italic, "nested"]], "end"]
     result = @gouache.green(array)
-    assert_equal "\e[32mstart\e[22;1mbold\e[22mmiddle\e[31;3mnested\e[32;23mend\e[0m", result
+    assert_equal "\e[32mstart\e[1mbold\e[22mmiddle\e[31;3mnested\e[32;23mend\e[0m", result
   end
 
   def test_builder_method_with_deeply_nested_arrays
     # 4-level deep array nesting should flatten and compile correctly
     array = [[[[:bold, "deep"]]]]
     result = @gouache.red(array)
-    assert_equal "\e[22;31;1mdeep\e[0m", result
+    assert_equal "\e[31;1mdeep\e[0m", result
   end
 
   def test_builder_method_with_multiple_arrays
     # Multiple separate array arguments should be processed sequentially
     result = @gouache.blue(["first", "part"], [:bold, "second"], ["third"])
-    assert_equal "\e[34mfirstpart\e[22;1msecond\e[22mthird\e[0m", result
+    assert_equal "\e[34mfirstpart\e[1msecond\e[22mthird\e[0m", result
   end
 
   def test_builder_method_with_empty_arrays
@@ -369,21 +369,21 @@ class TestBuilder < Minitest::Test
       x.blue([:bold, "nested"])     # Array with symbol in nested method call
       x << "plain"                  # Plain append for comparison
     }
-    assert_equal "\e[22;34;1mnested\e[22;31mplain\e[0m", result
+    assert_equal "\e[34;1mnested\e[22;31mplain\e[0m", result
   end
 
   def test_builder_method_with_alternating_symbols_in_array
     # Array with alternating symbols and content: symbol applies to following content
     array = [:bold, "one", :italic, "two", :underline, "three"]
     result = @gouache.red(array)
-    assert_equal "\e[22;31;1mone\e[3mtwo\e[4mthree\e[0m", result
+    assert_equal "\e[31;1mone\e[3mtwo\e[4mthree\e[0m", result
   end
 
   def test_builder_method_with_mixed_types_in_array
     # Array with various types: numbers, symbols, nil, booleans, strings
     array = [123, :bold, nil, true, "text"]  # nil should be filtered out
     result = @gouache.green(array)
-    assert_equal "\e[32m123\e[22;1mtruetext\e[0m", result
+    assert_equal "\e[32m123\e[1mtruetext\e[0m", result
   end
 
   def test_builder_method_array_vs_direct_compilation
@@ -392,7 +392,7 @@ class TestBuilder < Minitest::Test
     builder_result = @gouache.green(array)    # Via builder method
     direct_result = @gouache[:green, array]   # Via direct compilation
     assert_equal direct_result, builder_result
-    assert_equal "\e[22;32;1mtext\e[31mmore\e[0m", builder_result
+    assert_equal "\e[32;1mtext\e[31mmore\e[0m", builder_result
   end
 
   def test_builder_method_with_nested_builder_calls_in_array
@@ -409,7 +409,7 @@ class TestBuilder < Minitest::Test
     result = @gouache.red.bold([:italic, "array_content"]) {|x|  # Array in chained call
       x.underline("block_content")                               # Block adds more content
     }
-    expected = "\e[22;31;3;1marray_content\e[23;4mblock_content\e[0m"
+    expected = "\e[31;3;1marray_content\e[23;4mblock_content\e[0m"
     assert_equal expected, result
   end
 
@@ -417,7 +417,7 @@ class TestBuilder < Minitest::Test
     # Array with multiple consecutive symbols should auto-nest: [:bold, [:italic, [:underline, "text"]]]
     array = [:bold, :italic, :underline, "chained_styles"]
     result = @gouache.red(array)
-    assert_equal "\e[22;31;3;4;1mchained_styles\e[0m", result
+    assert_equal "\e[31;3;4;1mchained_styles\e[0m", result
   end
 
   def test_builder_method_with_array_in_nested_blocks
@@ -429,7 +429,7 @@ class TestBuilder < Minitest::Test
         y.magenta(["plain", :underline, "underlined"])  # Mixed array content
       }
     }
-    expected = "\e[22;34;1mblue_bold\e[22;33;3myellow_italic\e[35;23mplain\e[4munderlined\e[0m"
+    expected = "\e[34;1mblue_bold\e[22;33;3myellow_italic\e[35;23mplain\e[4munderlined\e[0m"
     assert_equal expected, result
   end
 
@@ -440,7 +440,7 @@ class TestBuilder < Minitest::Test
       x.blue(array)                             # Pass entire complex array to method
       x << "final"                              # Append plain content
     }
-    expected = "\e[34mstart\e[22;1mbold_part\e[22;3mitalic_partnested\e[4munder\e[31;23;24mfinal\e[0m"
+    expected = "\e[34mstart\e[1mbold_part\e[22;3mitalic_partnested\e[4munder\e[31;23;24mfinal\e[0m"
     assert_equal expected, result
   end
 
@@ -449,7 +449,7 @@ class TestBuilder < Minitest::Test
     inner = @gouache.red {|x| x.bold("inner") }         # Pre-built content with escape codes
     array = ["prefix", inner, "suffix"]                 # Mix with plain strings
     result = @gouache.green(array)
-    expected = "\e[32mprefix\e[22;31;1minner\e[22;32msuffix\e[0m"
+    expected = "\e[32mprefix\e[31;1minner\e[22;32msuffix\e[0m"
     assert_equal expected, result
   end
 
@@ -458,7 +458,7 @@ class TestBuilder < Minitest::Test
     result = @gouache.red {|x|
       x.blue.bold([:italic, "chained_with_array"])  # Chain + array in block
     }
-    expected = "\e[22;34;3;1mchained_with_array\e[0m"
+    expected = "\e[34;3;1mchained_with_array\e[0m"
     assert_equal expected, result
   end
 
@@ -468,7 +468,7 @@ class TestBuilder < Minitest::Test
       x.blue(["first"], [:bold, "second"])      # Multiple arrays to same call
       x.green([[:italic, "third"]], "fourth")   # Nested array + string
     }
-    expected = "\e[34mfirst\e[22;1msecond\e[22;32;3mthird\e[23mfourth\e[0m"
+    expected = "\e[34mfirst\e[1msecond\e[22;32;3mthird\e[23mfourth\e[0m"
     assert_equal expected, result
   end
 
@@ -478,7 +478,7 @@ class TestBuilder < Minitest::Test
       x.blue([:bold, "from_array"])                         # Method call with array
       x << ["appended_array", :italic, "italic_appended"]   # Append operator now handles arrays properly
     }
-    expected = "\e[22;34;1mfrom_array\e[22;31mappended_array\e[3mitalic_appended\e[0m"
+    expected = "\e[34;1mfrom_array\e[22;31mappended_array\e[3mitalic_appended\e[0m"
     assert_equal expected, result
   end
 
@@ -492,7 +492,7 @@ class TestBuilder < Minitest::Test
         }
       }
     }
-    expected = "\e[22;32;1mdeep_bold\e[22;35;3mvery_deep\e[23mplain\e[0m"
+    expected = "\e[32;1mdeep_bold\e[22;35;3mvery_deep\e[23mplain\e[0m"
     assert_equal expected, result
   end
 
@@ -510,7 +510,7 @@ class TestBuilder < Minitest::Test
     result = @gouache.blue {|x|
       x << [[:bold, "bold"], " ", [:italic, "italic"]]
     }
-    expected = "\e[22;34;1mbold\e[22m \e[3mitalic\e[0m"
+    expected = "\e[34;1mbold\e[22m \e[3mitalic\e[0m"
     assert_equal expected, result
   end
 
@@ -533,7 +533,7 @@ class TestBuilder < Minitest::Test
       x.red("red_content")
       x << " suffix"
     }
-    expected = "start\e[22;1mbold_part\e[22;31mred_content\e[39m suffix\e[0m"
+    expected = "start\e[1mbold_part\e[22;31mred_content\e[39m suffix\e[0m"
     assert_equal expected, result
   end
 
@@ -552,7 +552,7 @@ class TestBuilder < Minitest::Test
       x.green("green_text")
       x.bold("bold_text")
     }
-    expected = "\e[32mgreen_text\e[22;39;1mbold_text\e[0m"
+    expected = "\e[32mgreen_text\e[39;1mbold_text\e[0m"
     assert_equal expected, result
   end
 
@@ -577,7 +577,7 @@ class TestBuilder < Minitest::Test
       }
       a << " final"
     }
-    expected = "outer\e[22;31;1mnested_content\e[22;39m final\e[0m"
+    expected = "outer\e[31;1mnested_content\e[22;39m final\e[0m"
     assert_equal expected, result
   end
 
@@ -596,7 +596,7 @@ class TestBuilder < Minitest::Test
     result = @gouache["prefix"] {|x|
       x.red.bold("chained_method")
     }
-    expected = "prefix\e[22;31;1mchained_method\e[0m"
+    expected = "prefix\e[31;1mchained_method\e[0m"
     assert_equal expected, result
   end
 

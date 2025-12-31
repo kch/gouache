@@ -75,8 +75,9 @@ class Gouache
     private def flush
       return self unless @enabled
       return self unless @queue.any?
-      @flushed = Layer.from Layer.from(@queue).diff(@flushed)
-      sgr = @flushed.to_sgr(fallback: true)
+      @flushed = Layer.from Layer.from(@queue).diff(@flushed) # just the diffs for sgr
+      sgr = @flushed.to_sgr(fallback: true)                   # use diff layer to emit sgr with fallback
+      @flushed = @layers.top.overlay @flushed                 # full layer for next diff
       @queue.clear
       return self if sgr.empty?
       @got_sgr = true

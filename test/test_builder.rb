@@ -400,7 +400,7 @@ class TestBuilder < Minitest::Test
     nested_content = @gouache[:italic, "italic_text"]  # Pre-compiled with escape codes
     array = ["prefix", nested_content, "suffix"]       # Mixed with plain strings
     result = @gouache.red(array)
-    expected = "\e[31mprefix\e[3mitalic_text\e[31;23msuffix\e[0m"
+    expected = "\e[31mprefix\e[3mitalic_text\e[23msuffix\e[0m"
     assert_equal expected, result
   end
 

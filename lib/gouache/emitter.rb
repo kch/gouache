@@ -13,7 +13,6 @@ class Gouache
       @layers   = LayerStack.new # each tag or bare sgr emitted generates a layer
       @flushed  = @layers.base   # keep layer state after each flush so next flush can diff against it
       @queue    = []             # accumulate sgr params to emit until we have text to style (we collapse to minimal set then)
-      @got_sgr  = false          # did we emit sgr at all? used to determine if reset in the end
       @out      = +""
       # special rule _base applies to all
       enqueue @layers.diffpush @ss.layers[:_base], @ss.effects[:_base] if @ss.tag? :_base
@@ -80,14 +79,14 @@ class Gouache
       @flushed = @layers.top.overlay @flushed                 # full layer for next diff
       @queue.clear
       return self if sgr.empty?
-      @got_sgr = true
+      sgr = ?0 if @flushed == @layers.base
       @out << CSI << sgr << ?m
       self
     end
 
     def emit!
       return @emitted if @emitted
-      @out << CSI << "0m" if @got_sgr # this replaces the final flush. if no sgr emitted, don't bother resetting
+      @out << CSI << "0m" if @flushed != @layers.base # this replaces the final flush. if no sgr emitted, don't bother resetting
       @emitted, @out = @out, nil
       @emitted
     end

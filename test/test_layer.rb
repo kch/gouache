@@ -190,42 +190,42 @@ class TestLayer < Minitest::Test
     base   = Gouache::Layer.from([0])     # BASE - no bold/dim
     target = Gouache::Layer.from([0, 1])  # bold
     diff   = target.diff(base)
-    assert_equal [22, 1], diff    # reset then bold from target
+    assert_equal [1], diff    # bold from target
   end
 
   def test_layer_diff_none_to_dim
     base   = Gouache::Layer.from([0])     # BASE - no bold/dim
     target = Gouache::Layer.from([0, 2])  # dim
     diff   = target.diff(base)
-    assert_equal [22, 2], diff   # reset then dim from target
+    assert_equal [2], diff   # dim from target
   end
 
   def test_layer_diff_bold_to_none
     base   = Gouache::Layer.from([0, 1])  # bold
     target = Gouache::Layer.from([0])     # BASE - no bold/dim
     diff   = target.diff(base)
-    assert_equal [22], diff   # reset to turn off bold/dim
+    assert_equal [22], diff   # reset bold/dim
   end
 
   def test_layer_diff_dim_to_none
     base   = Gouache::Layer.from([0, 2])  # dim
     target = Gouache::Layer.from([0])     # BASE - no bold/dim
     diff   = target.diff(base)
-    assert_equal [22], diff   # reset to turn off bold/dim
+    assert_equal [22], diff   # reset bold/dim
   end
 
   def test_layer_diff_bold_to_dim
     base   = Gouache::Layer.from([0, 1])  # bold
     target = Gouache::Layer.from([0, 2])  # dim
     diff   = target.diff(base)
-    assert_equal [22, 2], diff   # reset then apply dim
+    assert_equal [22, 2], diff   # reset then dim
   end
 
   def test_layer_diff_dim_to_bold
     base   = Gouache::Layer.from([0, 2])  # dim
     target = Gouache::Layer.from([0, 1])  # bold
     diff   = target.diff(base)
-    assert_equal [22, 1], diff   # reset then apply bold
+    assert_equal [22, 1], diff   # reset then bold
   end
 
   def test_layer_diff_none_to_bold_dim
@@ -239,35 +239,35 @@ class TestLayer < Minitest::Test
     base   = Gouache::Layer.from([0, 1, 2])  # both bold and dim
     target = Gouache::Layer.from([0])        # BASE - no bold/dim
     diff   = target.diff(base)
-    assert_equal [22], diff   # reset to turn off bold/dim
+    assert_equal [22], diff   # reset bold/dim
   end
 
   def test_layer_diff_bold_to_bold_dim
     base   = Gouache::Layer.from([0, 1])     # bold only
     target = Gouache::Layer.from([0, 1, 2])  # bold and dim
     diff   = target.diff(base)
-    assert_equal [1, 2], diff   # add dim while keeping bold
+    assert_equal [2], diff   # add dim to existing bold
   end
 
   def test_layer_diff_dim_to_bold_dim
     base   = Gouache::Layer.from([0, 2])     # dim only
     target = Gouache::Layer.from([0, 1, 2])  # bold and dim
     diff   = target.diff(base)
-    assert_equal [1, 2], diff   # add bold while keeping dim
+    assert_equal [1], diff   # add bold to existing dim
   end
 
   def test_layer_diff_bold_dim_to_bold
     base   = Gouache::Layer.from([0, 1, 2])  # both bold and dim
     target = Gouache::Layer.from([0, 1])     # bold only
     diff   = target.diff(base)
-    assert_equal [22, 1], diff   # reset then apply bold only
+    assert_equal [22, 1], diff   # reset then bold to keep bold on
   end
 
   def test_layer_diff_bold_dim_to_dim
     base   = Gouache::Layer.from([0, 1, 2])  # both bold and dim
     target = Gouache::Layer.from([0, 2])     # dim only
     diff   = target.diff(base)
-    assert_equal [22, 2], diff   # reset then apply dim only
+    assert_equal [22, 2], diff   # reset then dim to keep dim on
   end
 
   def test_layer_diff_empty_case

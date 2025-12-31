@@ -174,9 +174,9 @@ class TestMain < Minitest::Test
 
   def test_main_instance_has_base_styles
     # MAIN instance should have base stylesheet
-    assert Gouache::MAIN.rules.tag?(:red)
-    assert Gouache::MAIN.rules.tag?(:bold)
-    assert Gouache::MAIN.rules.tag?(:blue)
+    assert Gouache::MAIN.stylesheet.tag?(:red)
+    assert Gouache::MAIN.stylesheet.tag?(:bold)
+    assert Gouache::MAIN.stylesheet.tag?(:blue)
   end
 
   def test_class_methods_vs_main_instance_consistency
@@ -188,12 +188,12 @@ class TestMain < Minitest::Test
 
   def test_class_bracket_with_styles_doesnt_affect_main
     # Using Gouache[] with styles shouldn't affect MAIN instance
-    had_custom = Gouache::MAIN.rules.tag?(:custom)
+    had_custom = Gouache::MAIN.stylesheet.tag?(:custom)
 
     Gouache[:custom, "text", custom: 33]
 
     # MAIN should be unchanged
-    assert_equal had_custom, Gouache::MAIN.rules.tag?(:custom)
+    assert_equal had_custom, Gouache::MAIN.stylesheet.tag?(:custom)
   end
 
   def test_class_unpaint_method

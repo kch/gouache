@@ -207,11 +207,11 @@ class TestEffects < Minitest::Test
     assert result.length > "basestyled".length  # Has escape codes
 
     # Test that effects were processed by examining stylesheet
-    effects = go.rules.effects[:with_effects]
+    effects = go.stylesheet.effects[:with_effects]
     assert_equal [bold_effect, color_copy_effect, dim_effect], effects
 
     # Test layer has SGR codes applied
-    layer = go.rules.layers[:with_effects]
+    layer = go.stylesheet.layers[:with_effects]
     assert_equal 32, layer[Gouache::Layer::RANGES[:fg].index]  # green fg
     assert_equal 4, layer[Gouache::Layer::RANGES[:underline].index]   # underline
     assert_equal 3, layer[Gouache::Layer::RANGES[:italic].index]   # italic

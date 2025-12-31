@@ -103,7 +103,7 @@ class Gouache
     class Proxy < BasicObject
 
       def self.for(instance, m, ...)
-        return unless m.nil? || instance.rules.tag?(m)
+        return unless m.nil? || instance.stylesheet.tag?(m)
         new(instance).__send__(:_build!, m, ...)
       end
 
@@ -118,7 +118,7 @@ class Gouache
 
       private def method_missing(m, ...)
         return super if %i[ to_s to_str to_ary ].include? m # prevent confusion if proxy leaks
-        # return super unless @instance.rules.tag? m  # TODO: optional?
+        # return super unless @instance.stylesheet.tag? m  # TODO: optional?
         _build!(m, ...)
       end
 

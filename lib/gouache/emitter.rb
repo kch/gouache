@@ -7,7 +7,7 @@ class Gouache
   class Emitter
 
     def initialize(instance:)
-      @rules    = instance.rules # stylesheet
+      @ss       = instance.stylesheet # stylesheet
       @enabled  = instance.enabled?
       @eachline = instance.eachline
       @layers   = LayerStack.new # each tag or bare sgr emitted generates a layer
@@ -16,11 +16,11 @@ class Gouache
       @got_sgr  = false          # did we emit sgr at all? used to determine if reset in the end
       @out      = +""
       # special rule _base applies to all
-      enqueue @layers.diffpush @rules.layers[:_base], @rules.effects[:_base] if @rules.tag? :_base
+      enqueue @layers.diffpush @ss.layers[:_base], @ss.effects[:_base] if @ss.tag? :_base
     end
 
     def enqueue(sgr)       = (@queue << sgr; self)
-    def open_tag(tag)      = enqueue @layers.diffpush(@rules.layers[tag], @rules.effects[tag], tag: tag)
+    def open_tag(tag)      = enqueue @layers.diffpush(@ss.layers[tag], @ss.effects[tag], tag: tag)
     def begin_sgr          = enqueue @layers.diffpush(nil, tag: :@@sgr)
     def push_sgr(sgr_text) = enqueue @layers.diffpush(Layer.from Gouache.scan_sgr sgr_text)
 

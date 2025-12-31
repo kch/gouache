@@ -10,44 +10,44 @@ class TestGouache < Minitest::Test
     go = Gouache.new
     assert_equal $stdout, go.io  # Should default to $stdout
     assert [true, false].include?(go.enabled?)  # Should always return boolean
-    assert_kind_of Gouache::Stylesheet, go.rules
-    assert go.rules.tag?(:red)  # Verify base styles are present
+    assert_kind_of Gouache::Stylesheet, go.stylesheet
+    assert go.stylesheet.tag?(:red)  # Verify base styles are present
   end
 
   def test_initialize_with_styles_hash
     # Styles hash should be merged with base stylesheet
     custom_styles = {custom_red: 31, custom_blue: 34}
     go = Gouache.new(styles: custom_styles)
-    assert go.rules.tag?(:custom_red)
-    assert go.rules.tag?(:custom_blue)
+    assert go.stylesheet.tag?(:custom_red)
+    assert go.stylesheet.tag?(:custom_blue)
     # Base styles should still be present
-    assert go.rules.tag?(:red)  # From BASE stylesheet
+    assert go.stylesheet.tag?(:red)  # From BASE stylesheet
   end
 
   def test_initialize_with_keyword_styles
     # Keyword arguments should be merged as styles
     go = Gouache.new(my_red: 31, my_blue: 34)
-    assert go.rules.tag?(:my_red)
-    assert go.rules.tag?(:my_blue)
+    assert go.stylesheet.tag?(:my_red)
+    assert go.stylesheet.tag?(:my_blue)
     # Base styles should still be present
-    assert go.rules.tag?(:red)
+    assert go.stylesheet.tag?(:red)
   end
 
   def test_initialize_with_both_styles_and_keywords
     # Both styles hash and keywords should be merged
     styles_hash = {hash_style: 31}
     go = Gouache.new(styles: styles_hash, keyword_style: 32)
-    assert go.rules.tag?(:hash_style)
-    assert go.rules.tag?(:keyword_style)
+    assert go.stylesheet.tag?(:hash_style)
+    assert go.stylesheet.tag?(:keyword_style)
     # Base styles should still be present
-    assert go.rules.tag?(:red)
+    assert go.stylesheet.tag?(:red)
   end
 
   def test_initialize_keywords_override_styles_hash
     # Keyword arguments should take precedence over styles hash
     go = Gouache.new(styles: {red: 31}, red: 32)
     # Just verify red key exists (keyword should override)
-    assert go.rules.tag?(:red)
+    assert go.stylesheet.tag?(:red)
   end
 
   def test_initialize_with_io_parameter
@@ -211,7 +211,7 @@ class TestGouache < Minitest::Test
   end
 
   def test_rules_immutable_after_init
-    # rules should not be affected by later changes to initialization arguments
+    # stylesheet should not be affected by later changes to initialization arguments
     styles_hash = {mutable_red: 31}
     go = Gouache.new(styles: styles_hash)
 
@@ -219,9 +219,9 @@ class TestGouache < Minitest::Test
     styles_hash[:mutable_red] = 32
     styles_hash[:new_style] = 33
 
-    # Should not affect initialized rules
-    assert go.rules.tag?(:mutable_red)
-    refute go.rules.tag?(:new_style)
+    # Should not affect initialized stylesheet
+    assert go.stylesheet.tag?(:mutable_red)
+    refute go.stylesheet.tag?(:new_style)
   end
 
   def test_multiple_instances_independent
@@ -230,15 +230,15 @@ class TestGouache < Minitest::Test
     go2 = Gouache.new(style2: 32)
 
     # Should have their own custom styles
-    assert go1.rules.tag?(:style1)
-    refute go1.rules.tag?(:style2)
+    assert go1.stylesheet.tag?(:style1)
+    refute go1.stylesheet.tag?(:style2)
 
-    refute go2.rules.tag?(:style1)
-    assert go2.rules.tag?(:style2)
+    refute go2.stylesheet.tag?(:style1)
+    assert go2.stylesheet.tag?(:style2)
 
     # Both should have base styles
-    assert go1.rules.tag?(:red)
-    assert go2.rules.tag?(:red)
+    assert go1.stylesheet.tag?(:red)
+    assert go2.stylesheet.tag?(:red)
   end
 
   def test_enabled_state_independent_across_instances
@@ -283,9 +283,9 @@ class TestGouache < Minitest::Test
     # Check all parameters were processed correctly
     assert_equal custom_io, go.io
     assert_equal true, go.enabled?  # Explicit override
-    assert go.rules.tag?(:keyword_red)   # Keyword won
-    assert go.rules.tag?(:hash_blue)     # From hash
-    assert go.rules.tag?(:keyword_green) # From keyword
+    assert go.stylesheet.tag?(:keyword_red)   # Keyword won
+    assert go.stylesheet.tag?(:hash_blue)     # From hash
+    assert go.stylesheet.tag?(:keyword_green) # From keyword
   end
 
   def test_disabled_instance_produces_plain_output
@@ -317,8 +317,8 @@ class TestGouache < Minitest::Test
     # Verify all args were passed correctly
     assert_equal custom_io, go.io
     assert_equal true, go.enabled?
-    assert go.rules.tag?(:test_style)
-    assert go.rules.tag?(:keyword_style)
+    assert go.stylesheet.tag?(:test_style)
+    assert go.stylesheet.tag?(:keyword_style)
   end
 
   def test_class_new_with_block_calls_block
@@ -357,7 +357,7 @@ class TestGouache < Minitest::Test
     go = Gouache.new(test_style: 42)
 
     assert_instance_of Gouache, go
-    assert go.rules.tag?(:test_style)
+    assert go.stylesheet.tag?(:test_style)
   end
 
   def test_class_new_with_block_custom_styles_enabled

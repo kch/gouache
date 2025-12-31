@@ -26,7 +26,7 @@ class Gouache
   RX_UNPAINT = Regexp.union RX_SGR, WRAP_OPEN, WRAP_CLOSE
   RX_SGR_SEQ = /(?<=^|;|\[)(?: ( [345]8 ;  (?: 5 ; #{D8} | 2 (?: ; #{D8} ){3} ))  |  (#{D8}) )(?=;|m|$)/x
 
-  attr :rules, :eachline
+  attr :stylesheet, :eachline
 
   class << self
     using Wrap
@@ -45,17 +45,17 @@ class Gouache
   end
 
   def initialize(styles:{}, io:nil, enabled:nil, eachline:false, **kvstyles)
-    @io       = io
-    @enabled  = enabled
-    @eachline = eachline == true ? "\n" : eachline
-    @rules    = Stylesheet::BASE.merge(styles, kvstyles)
+    @io         = io
+    @enabled    = enabled
+    @eachline   = eachline == true ? "\n" : eachline
+    @stylesheet = Stylesheet::BASE.merge(styles, kvstyles)
   end
 
   MAIN = new # global instance
 
   def dup(styles: nil)
     go = self.class.new(io: @io, enabled: @enabled)
-    go.instance_variable_set(:@rules, @rules.merge(styles))
+    go.instance_variable_set(:@stylesheet, @stylesheet.merge(styles))
     go
   end
 
@@ -90,7 +90,7 @@ class Gouache
 
   def refinement
     instance = self
-    style_methods = instance.rules.tags
+    style_methods = instance.stylesheet.tags
     other_methods = %i[ unpaint repaint wrap ]
     Module.new do
       refine String do

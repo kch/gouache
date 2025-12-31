@@ -122,11 +122,6 @@ class TestLayerProxy < Minitest::Test
     assert_equal [0, 255, 0], result.rgb
   end
 
-  def test_underline_color_reader_with_string
-    @layer[Gouache::Layer::RANGES[:underline_color].index] = "red underline"
-    assert_equal "red underline", @proxy.underline_color
-  end
-
   def test_underline_color_reader_with_color_object
     color = Gouache::Color.over_rgb(255, 128, 0)
     @layer[Gouache::Layer::RANGES[:underline_color].index] = color

@@ -6,6 +6,7 @@ class Gouache
 
   BASE_STYLES = {
     reset:              0,
+    clear:              0,
     black:              30,
     red:                31,
     green:              32,

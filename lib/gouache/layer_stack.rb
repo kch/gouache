@@ -5,11 +5,12 @@ require_relative "layer_proxy"
 
 class Gouache
 
-  module LayerTags
-    attr_accessor :tag
-  end
-
   class LayerStack < Array
+
+    module LayerTags
+      attr_accessor :tag
+    end
+
     alias top last
     alias base first
     def base? = size == 1

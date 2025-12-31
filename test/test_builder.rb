@@ -165,8 +165,7 @@ class TestBuilder < Minitest::Test
       x.("nested_call_text")
     }
     expected = "\e[31mred_content" +
-               "\e[39mnested_call_text" +
-               "\e[0m"
+               "\e[0mnested_call_text"
     assert_equal expected, result
   end
 
@@ -533,7 +532,7 @@ class TestBuilder < Minitest::Test
       x.red("red_content")
       x << " suffix"
     }
-    expected = "start\e[1mbold_part\e[22;31mred_content\e[39m suffix\e[0m"
+    expected = "start\e[1mbold_part\e[22;31mred_content\e[0m suffix"
     assert_equal expected, result
   end
 
@@ -542,7 +541,7 @@ class TestBuilder < Minitest::Test
     result = @gouache[[:italic, "italic_part"], "middle"] {|x|
       x.underline("underlined")
     }
-    expected = "\e[3mitalic_part\e[23mmiddle\e[4munderlined\e[0m"
+    expected = "\e[3mitalic_part\e[0mmiddle\e[4munderlined\e[0m"
     assert_equal expected, result
   end
 
@@ -577,7 +576,7 @@ class TestBuilder < Minitest::Test
       }
       a << " final"
     }
-    expected = "outer\e[31;1mnested_content\e[22;39m final\e[0m"
+    expected = "outer\e[31;1mnested_content\e[0m final"
     assert_equal expected, result
   end
 

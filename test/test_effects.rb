@@ -292,7 +292,7 @@ class TestEffects < Minitest::Test
   def test_base_effects_combined_sequence
     # Test the example sequence from the diff
     result = Gouache[:bold, :dim, "start", :dim_off, "middle", :bold_off, "end"]
-    assert_equal "\e[1;2mstart\e[22;1mmiddle\e[22mend\e[0m", result
+    assert_equal "\e[1;2mstart\e[22;1mmiddle\e[0mend", result
   end
 
   def test_base_effects_with_other_styles

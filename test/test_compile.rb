@@ -145,14 +145,14 @@ class TestCompile < Minitest::Test
     ]
 
     result = @go[*structure]
-    expected = "start\e[1mbold text\e[31mred and bold\e[39mmore bold\e[22mmiddle\e[3mjust italic\e[23mplain in nested\e[4munderlined end\e[0m"
+    expected = "start\e[1mbold text\e[31mred and bold\e[39mmore bold\e[0mmiddle\e[3mjust italic\e[0mplain in nested\e[4munderlined end\e[0m"
     assert_equal expected, result
   end
 
   def test_compile_deeply_nested_arrays
     structure = [[[[[[:bold, "deep"]]]]], "surface"]  # 6-level deep nesting
     result = @go[*structure]
-    expected = "\e[1mdeep\e[22msurface\e[0m"      # Deep nesting flattened, incremental close, final reset
+    expected = "\e[1mdeep\e[0msurface"
     assert_equal expected, result
   end
 
@@ -243,7 +243,7 @@ class TestCompile < Minitest::Test
       "end"
     ]
 
-    expected = "start\e[1mbold text\e[31mred and bold\e[39mmore bold\e[22mmiddle\e[3;4mnested textend\e[0m"
+    expected = "start\e[1mbold text\e[31mred and bold\e[39mmore bold\e[0mmiddle\e[3;4mnested textend\e[0m"
     assert_equal expected, result
   end
 

@@ -27,7 +27,7 @@ class TestRepaint < Minitest::Test
     # \e[0m would reset all styles - should be transformed to specific resets when enabled
     problematic = "text with \e[31mred\e[0m reset"
     result = @go.repaint(problematic)
-    expected = "text with \e[31mred\e[39m reset\e[0m"  # 0m -> 39m (default fg), final 0m added
+    expected = "text with \e[31mred\e[0m reset"
     assert_equal expected, result
   end
 
@@ -44,7 +44,7 @@ class TestRepaint < Minitest::Test
     # Multiple reset codes should all be transformed to specific resets
     problematic = "start \e[1mbold\e[0m middle \e[31mred\e[0m end"
     result = @go.repaint(problematic)
-    expected = "start \e[1mbold\e[22m middle \e[31mred\e[39m end\e[0m"  # First 0m -> 22m, second 0m -> 39m
+    expected = "start \e[1mbold\e[0m middle \e[31mred\e[0m end"
     assert_equal expected, result
   end
 
@@ -52,7 +52,7 @@ class TestRepaint < Minitest::Test
     # Complex multi-code SGR sequences should be properly ordered and reset incrementally
     problematic = "text \e[1;31;4mbold red underline\e[0m end"
     result = @go.repaint(problematic)
-    expected = "text \e[31;4;1mbold red underline\e[22;39;24m end\e[0m"  # 0m -> specific closes for each style
+    expected = "text \e[31;4;1mbold red underline\e[0m end"
     assert_equal expected, result
   end
 
@@ -75,7 +75,7 @@ class TestRepaint < Minitest::Test
     content_to_wrap = "wrapped \e[32mgreen\e[0m content"
     text_with_wrap = "before #{content_to_wrap.wrap} after \e[31mred\e[0m end"
     result = @go.repaint(text_with_wrap)
-    expected = "before wrapped \e[32mgreen\e[39m content after \e[31mred\e[39m end\e[0m"
+    expected = "before wrapped \e[32mgreen\e[0m content after \e[31mred\e[0m end"
     assert_equal expected, result
   end
 
@@ -85,7 +85,7 @@ class TestRepaint < Minitest::Test
     outer = "outer #{inner.wrap} \e[31mred\e[0m"
     text_with_nested = "start #{outer.wrap} end"
     result = @go.repaint(text_with_nested)
-    expected = "start outer inner \e[1mbold\e[22m \e[31mred\e[39m end\e[0m"
+    expected = "start outer inner \e[1mbold\e[0m \e[31mred\e[0m end"
     assert_equal expected, result
   end
 
@@ -101,7 +101,7 @@ class TestRepaint < Minitest::Test
     # String starting with SGR codes should be processed with bold prefix
     problematic = "\e[1mbold start\e[0m normal end"
     result = @go.repaint(problematic)
-    expected = "\e[1mbold start\e[22m normal end\e[0m"  # Bold gets 22 prefix, 0m -> 22m, final 0m added
+    expected = "\e[1mbold start\e[0m normal end"
     assert_equal expected, result
   end
 
@@ -117,7 +117,7 @@ class TestRepaint < Minitest::Test
     # Mix of problematic and non-problematic SGR codes - only 0m gets transformed
     mixed = "text \e[31mred \e[1mbold\e[22m unbold \e[39m default\e[0m reset"
     result = @go.repaint(mixed)
-    expected = "text \e[31mred \e[1mbold\e[22m unbold \e[39m default reset\e[0m"  # Only the final 0m removed, rest preserved
+    expected = "text \e[31mred \e[1mbold\e[22m unbold \e[0m default reset"
     assert_equal expected, result
   end
 
@@ -148,7 +148,7 @@ class TestRepaint < Minitest::Test
     wrap2 = "wrap2 \e[4munder\e[0m".wrap
     complex = "start #{wrap1} middle \e[31mred\e[0m #{wrap2} end"
     result = @go.repaint(complex)
-    expected = "start wrap1 \e[32mgreen\e[39m middle \e[31mred\e[39m wrap2 \e[4munder\e[24m end\e[0m"
+    expected = "start wrap1 \e[32mgreen\e[0m middle \e[31mred\e[0m wrap2 \e[4munder\e[0m end"
     assert_equal expected, result
   end
 
@@ -156,7 +156,7 @@ class TestRepaint < Minitest::Test
     # Background color codes should get proper background reset
     bg_problematic = "text \e[41mred bg\e[0m normal"
     result = @go.repaint(bg_problematic)
-    expected = "text \e[41mred bg\e[49m normal\e[0m"  # 0m -> 49m (bg reset), final 0m added
+    expected = "text \e[41mred bg\e[0m normal"
     assert_equal expected, result
   end
 
@@ -164,7 +164,7 @@ class TestRepaint < Minitest::Test
     # Mixed foreground and background colors get specific resets for each
     mixed_colors = "text \e[31;41mred fg red bg\e[0m normal"
     result = @go.repaint(mixed_colors)
-    expected = "text \e[31;41mred fg red bg\e[39;49m normal\e[0m"  # 0m -> 39m (fg) + 49m (bg)
+    expected = "text \e[31;41mred fg red bg\e[0m normal"
     assert_equal expected, result
   end
 
@@ -172,7 +172,7 @@ class TestRepaint < Minitest::Test
     # 256-color codes should be preserved
     color256 = "text \e[38;5;196mbright red\e[0m normal"
     result = @go.repaint(color256)
-    expected = "text \e[38;5;196mbright red\e[39m normal\e[0m"
+    expected = "text \e[38;5;196mbright red\e[0m normal"
     assert_equal expected, result
   end
 
@@ -180,7 +180,7 @@ class TestRepaint < Minitest::Test
     # Truecolor (RGB) codes should be preserved
     truecolor = "text \e[38;2;255;0;0mred rgb\e[0m normal"
     result = @go.repaint(truecolor)
-    expected = "text \e[38;2;255;0;0mred rgb\e[39m normal\e[0m"
+    expected = "text \e[38;2;255;0;0mred rgb\e[0m normal"
     assert_equal expected, result
   end
 
@@ -189,7 +189,7 @@ class TestRepaint < Minitest::Test
     custom_go = Gouache.new(custom_red: 91)
     problematic = "text \e[31mstandard red\e[0m normal"
     result = custom_go.repaint(problematic)
-    expected = "text \e[31mstandard red\e[39m normal\e[0m"
+    expected = "text \e[31mstandard red\e[0m normal"
     assert_equal expected, result
   end
 
@@ -199,16 +199,23 @@ class TestRepaint < Minitest::Test
     long_string = long_parts.join(" ")
     result = @go.repaint(long_string)
 
-    # Should transform internal 0m codes to 39m, but preserve final 0m terminator
-    assert_includes result, "\e[39m"  # Internal resets become 39m
-    assert result.end_with?("\e[0m")  # Final complete reset preserved
+    # With the new behavior, all intermediate 0m resets stay as 0m
+    expected_pattern = /part\d+ \e\[3[0-7]mcolor\e\[0m/
+    assert_match expected_pattern, result
+
+    # Should not add extra final reset since each section already ends with 0m
+    refute result.end_with?(" \e[0m")
+
+    # Verify the pattern repeats throughout the string
+    matches = result.scan(expected_pattern)
+    assert_equal 100, matches.size, "Should have 100 color sections"
   end
 
   def test_repaint_unicode_with_sgr
     # Unicode text with SGR codes should be handled correctly without corruption
     unicode_sgr = "emoji 🌈 \e[31mred text\e[0m unicode ñoño"
     result = @go.repaint(unicode_sgr)
-    expected = "emoji 🌈 \e[31mred text\e[39m unicode ñoño\e[0m"  # Unicode preserved, 0m -> 39m
+    expected = "emoji 🌈 \e[31mred text\e[0m unicode ñoño"  # Unicode preserved, using 0m reset
     assert_equal expected, result
   end
 

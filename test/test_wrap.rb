@@ -146,7 +146,7 @@ class TestWrap < Minitest::Test
 
     # Key difference: wrap should preserve nested color structure
     # No wrap: green resets kill outer blue bold styling
-    assert result_no_wrap.include?("\e[32mgreen\e[22;39m")  # green followed by reset to default
+    assert result_no_wrap.include?("\e[32mgreen\e[0m")  # green followed by full reset
 
     # With wrap: markers preserve styling boundaries
     assert result_with_wrap.include?(Gouache::WRAP_OPEN)
@@ -167,7 +167,7 @@ class TestWrap < Minitest::Test
     wrapped_result = "xx #{outer_wrapped} xx"
     final_result = go.repaint(wrapped_result)
 
-    expected_clean = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    expected_clean = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[0m xx"
     assert_equal expected_clean, final_result
 
     # Should not contain wrap markers

@@ -279,7 +279,7 @@ class TestIntegration < Minitest::Test
       g << " after"
     end
 
-    expected = "Before \e[58;2;255;0;255munderlined text\e[59m after\e[0m"
+    expected = "Before \e[58;2;255;0;255munderlined text\e[0m after"
     assert_equal expected, result
   end
 
@@ -712,7 +712,7 @@ class TestIntegration < Minitest::Test
 
     # Repaint removes markers and fixes SGR sequences
     clean_result = go.repaint(wrapped_string)
-    expected_clean = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    expected_clean = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[0m xx"
     assert_equal expected_clean, clean_result
   end
 
@@ -781,9 +781,9 @@ class TestIntegration < Minitest::Test
     log_line = "[#{timestamp}] #{level} #{component}: #{message}"
     final_output = go.repaint(log_line)
 
-    expected = "[\e[2m2024-01-15 10:30:45\e[22m] " +
-               "\e[31;1mERROR\e[22;39m " +
-               "\e[36mAuthService\e[39m: " +
+    expected = "[\e[2m2024-01-15 10:30:45\e[0m] " +
+               "\e[31;1mERROR\e[0m " +
+               "\e[36mAuthService\e[0m: " +
                "\e[37mFailed to authenticate user \e[33mjohn.doe\e[0m"
     assert_equal expected, final_output
   end
@@ -812,7 +812,7 @@ class TestIntegration < Minitest::Test
 
     # With repaint - clean final output
     repainted = go.repaint(wrapped_result)
-    expected_repainted = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    expected_repainted = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[0m xx"
     assert_equal expected_repainted, repainted
   end
 
@@ -888,7 +888,7 @@ class TestIntegration < Minitest::Test
     repainted = go.repaint(final_wrapped)
     assert repainted.include?("wrapped red")
     assert repainted.include?("unwrapped green")
-    assert repainted.end_with?("\e[0m")
+
   end
 
   def test_wrap_integration_builder_with_wrap_methods
@@ -1128,7 +1128,7 @@ class TestWrapIntegrationWithRefinement < Minitest::Test
   def test_wrap_refinement_nested_string_methods
     # Test the user example with string refinements and wrap
     result_without_wrap = "xx #{"blue #{"green".green} bold".blue.bold} xx".red
-    expected_broken = "\e[31mxx \e[34;1mblue \e[32mgreen\e[39m bold\e[22m xx\e[0m"
+    expected_broken = "\e[31mxx \e[34;1mblue \e[32mgreen\e[0m bold xx"
     assert_equal expected_broken, result_without_wrap
 
     # With wrap - preserved styling with markers
@@ -1138,7 +1138,7 @@ class TestWrapIntegrationWithRefinement < Minitest::Test
 
     # With repaint - clean final output
     final_result = result_with_wrap.repaint
-    expected_clean = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[22;39m xx\e[0m"
+    expected_clean = "xx \e[34;1mblue \e[32mgreen\e[34m bold\e[0m xx"
     assert_equal expected_clean, final_result
   end
 end

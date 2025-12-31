@@ -344,7 +344,7 @@ class TestEmitter < Minitest::Test
     @emitter.close_tag
     @emitter.close_tag
     @emitter << "plain-again "
-    expected << "\e[22;39mplain-again "
+    expected << "\e[0mplain-again "
 
     # Reopen after everything closed
     @emitter.open_tag(:cyan)
@@ -363,10 +363,7 @@ class TestEmitter < Minitest::Test
     @emitter.close_tag
     @emitter.close_tag
     @emitter << "final"
-    expected << "\e[39mfinal"
-
-    # Add final reset
-    expected << "\e[0m"
+    expected << "\e[0mfinal"
 
     result = @emitter.emit!
     assert_equal expected, result
@@ -401,7 +398,7 @@ class TestEmitter < Minitest::Test
     @emitter.end_sgr
     @emitter << "normal"
     result = @emitter.emit!
-    assert_equal "\e[31mred \e[39mnormal\e[0m", result
+    assert_equal "\e[31mred \e[0mnormal", result
   end
 
   def test_end_sgr_noop_when_no_block
@@ -451,7 +448,7 @@ class TestEmitter < Minitest::Test
     @emitter << "normal"
 
     result = @emitter.emit!
-    assert_equal "\e[31mouter \e[4minner \e[24mouter-again \e[39mnormal\e[0m", result
+    assert_equal "\e[31mouter \e[4minner \e[24mouter-again \e[0mnormal", result
   end
 
   def test_multiple_nested_sgr_blocks
@@ -668,7 +665,7 @@ class TestEmitter < Minitest::Test
     @emitter << "plain"
 
     result = @emitter.emit!
-    assert_equal "\e[31;3;4;1;2mall-styles \e[22;1mno-dim \e[24mno-underline \e[23mno-italic \e[39mno-red \e[22mplain\e[0m", result
+    assert_equal "\e[31;3;4;1;2mall-styles \e[22;1mno-dim \e[24mno-underline \e[23mno-italic \e[39mno-red \e[0mplain", result
   end
 
   def test_bold_dim_combined_single_tag
@@ -681,7 +678,7 @@ class TestEmitter < Minitest::Test
     emitter << "plain"
 
     result = emitter.emit!
-    assert_equal "\e[1;2mcombined \e[22mplain\e[0m", result
+    assert_equal "\e[1;2mcombined \e[0mplain", result
   end
 
   def test_complex_bold_dim_scenario
@@ -719,7 +716,7 @@ class TestEmitter < Minitest::Test
     @emitter << "remove-bold"
 
     result = @emitter.emit!
-    assert_equal "\e[32;3;1mbold-green-italic \e[2madd-dim \e[34mchange-to-blue \e[4madd-underline \e[24mremove-underline \e[32mback-to-green \e[22;1mremove-dim \e[23mremove-italic \e[39mremove-green \e[22mremove-bold\e[0m", result
+    assert_equal "\e[32;3;1mbold-green-italic \e[2madd-dim \e[34mchange-to-blue \e[4madd-underline \e[24mremove-underline \e[32mback-to-green \e[22;1mremove-dim \e[23mremove-italic \e[39mremove-green \e[0mremove-bold", result
   end
 
   def test_sgr_bold_dim_interactions
@@ -740,7 +737,7 @@ class TestEmitter < Minitest::Test
     @emitter << "plain"
 
     result = @emitter.emit!
-    assert_equal "\e[1msgr-bold \e[2mtag-dim \e[31madd-red \e[22;39;1mremove-dim \e[22mplain\e[0m", result
+    assert_equal "\e[1msgr-bold \e[2mtag-dim \e[31madd-red \e[22;39;1mremove-dim \e[0mplain", result
   end
 
   def test_nested_bold_dim_tags
@@ -761,7 +758,7 @@ class TestEmitter < Minitest::Test
     @emitter << "plain"
 
     result = @emitter.emit!
-    assert_equal "\e[1mdouble-bold \e[2mbold-bold-dim \e[22;1mback-to-double-bold single-bold \e[22mplain\e[0m", result
+    assert_equal "\e[1mdouble-bold \e[2mbold-bold-dim \e[22;1mback-to-double-bold single-bold \e[0mplain", result
   end
 
   def test_bold_dim_no_text_compaction

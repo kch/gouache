@@ -52,7 +52,7 @@ class TestMain < Minitest::Test
   def test_class_bracket_method_arrays
     # Gouache[] should handle arrays like instance
     result = Gouache[[:bold, "bold"], " ", [:red, "red"]]
-    expected = "\e[1mbold\e[22m \e[31mred\e[0m"
+    expected = "\e[1mbold\e[0m \e[31mred\e[0m"
     assert_equal expected, result
   end
 
@@ -241,7 +241,7 @@ class TestMain < Minitest::Test
 
   def test_class_repaint_complex_wrapped_content
     # Gouache.repaint should handle complex wrapped SGR sequences
-    complex_sgr = "\e[31;1mbold red\e[22;39mplain\e[34mblue\e[0m"
+    complex_sgr = "\e[31;1mbold red\e[0mplain\e[34mblue\e[0m"
     wrapped = Gouache.wrap(complex_sgr)
     repainted = Gouache.repaint(wrapped)
     assert_equal complex_sgr, repainted

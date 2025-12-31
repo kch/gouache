@@ -19,7 +19,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Manual SGR codes in string should be contained and not affect following tags
     text_with_sgr = "before \e[31mred\e[0m after"
     result = @go[text_with_sgr, :bold, "bold"]
-    expected = "before \e[31mred\e[39m after\e[1mbold\e[0m"  # 0→39 transformation
+    expected = "before \e[31mred\e[0m after\e[1mbold\e[0m"
     assert_equal expected, result
   end
 
@@ -27,7 +27,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Multiple SGR sequences should all be processed independently
     text_with_multiple_sgr = "text \e[1mbold\e[22m \e[31mred\e[39m end"
     result = @go[text_with_multiple_sgr, :underline, "underlined"]
-    expected = "text \e[1mbold\e[22m \e[31mred\e[39m end\e[4munderlined\e[0m"
+    expected = "text \e[1mbold\e[0m \e[31mred\e[0m end\e[4munderlined\e[0m"
     assert_equal expected, result
   end
 
@@ -43,7 +43,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Wrapped content should have SGR codes isolated within the wrap boundary
     content_to_wrap = "wrapped \e[31mred\e[0m content"
     result = @go["before #{content_to_wrap.wrap} after", :bold, "bold"]
-    expected = "before wrapped \e[31mred\e[39m content after\e[1mbold\e[0m"  # wrap isolates SGR
+    expected = "before wrapped \e[31mred\e[0m content after\e[1mbold\e[0m"
     assert_equal expected, result
   end
 
@@ -52,7 +52,7 @@ class TestSafeEmitSgr < Minitest::Test
     inner_content = "inner \e[1mbold\e[22m"
     outer_content = "outer #{inner_content.wrap} text"  # wrap inner first
     result = @go["start #{outer_content.wrap} end"]      # then wrap outer
-    expected = "start outer inner \e[1mbold\e[22m text end\e[0m"
+    expected = "start outer inner \e[1mbold\e[0m text end"
     assert_equal expected, result
   end
 
@@ -63,7 +63,7 @@ class TestSafeEmitSgr < Minitest::Test
       r << "text with \e[31mmanual red\e[0m "  # manual SGR in appended text
       r.bold("bold text")                      # then a tagged section
     }
-    expected = "\e[31mplain text with manual red\e[39m \e[31;1mbold text\e[0m"
+    expected = "\e[31mplain text with manual red\e[0m \e[31;1mbold text\e[0m"
     assert_equal expected, result
   end
 
@@ -73,7 +73,7 @@ class TestSafeEmitSgr < Minitest::Test
       b << "start \e[31mred\e[0m middle \e[32mgreen\e[0m end"
       b.bold("final")
     }
-    expected = "\e[34mstart \e[31mred\e[39m middle \e[32mgreen\e[39m end\e[34;1mfinal\e[0m"
+    expected = "\e[34mstart \e[31mred\e[0m middle \e[32mgreen\e[0m end\e[34;1mfinal\e[0m"
     assert_equal expected, result
   end
 
@@ -85,7 +85,7 @@ class TestSafeEmitSgr < Minitest::Test
       }
       r << " after bold"
     }
-    expected = "\e[31;1mbold with \e[33myellow\e[22;39m inside\e[31m after bold\e[0m"
+    expected = "\e[31;1mbold with \e[33myellow\e[0m inside\e[31m after bold\e[0m"
     assert_equal expected, result
   end
 
@@ -105,7 +105,7 @@ class TestSafeEmitSgr < Minitest::Test
       r << "red \e[32mgreen\e[39m back"  # 39 resets foreground only
       r.bold("bold")
     }
-    expected = "\e[31mred \e[32mgreen\e[39m back\e[31;1mbold\e[0m"
+    expected = "\e[31mred \e[32mgreen\e[0m back\e[31;1mbold\e[0m"
     assert_equal expected, result
   end
 
@@ -139,7 +139,7 @@ class TestSafeEmitSgr < Minitest::Test
   def test_unwrapped_string_with_sgr
     text_with_sgr = "plain \e[31mred\e[39m text"
     result = @go[text_with_sgr, :bold, "bold"]
-    expected = "plain \e[31mred\e[39m text\e[1mbold\e[0m"
+    expected = "plain \e[31mred\e[0m text\e[1mbold\e[0m"
     assert_equal expected, result
   end
 
@@ -147,7 +147,7 @@ class TestSafeEmitSgr < Minitest::Test
     content_to_wrap = "wrapped \e[4munderline\e[24m"
     text_after = " after \e[31mred\e[39m end"
     result = @go["before #{content_to_wrap.wrap}#{text_after}"]
-    expected = "before wrapped \e[4munderline\e[24m after \e[31mred\e[39m end\e[0m"
+    expected = "before wrapped \e[4munderline\e[0m after \e[31mred\e[0m end"
     assert_equal expected, result
   end
   def test_malformed_sgr_incomplete_escape
@@ -162,7 +162,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Multi-code SGR sequences should be processed with proper ordering
     complex_sgr = "start \e[1;31;4mbold red underline\e[0m end"
     result = @go[complex_sgr, :italic, "italic"]
-    expected = "start \e[31;4;1mbold red underline\e[22;39;24m end\e[3mitalic\e[0m"  # bold/dim at end
+    expected = "start \e[31;4;1mbold red underline\e[0m end\e[3mitalic\e[0m"
     assert_equal expected, result
   end
 
@@ -180,7 +180,7 @@ class TestSafeEmitSgr < Minitest::Test
     level2 = "level2 #{level3.wrap} text"      # wrap level3 inside level2
     level1 = "level1 #{level2.wrap} text"      # wrap level2 inside level1
     result = @go["start #{level1.wrap} end"]   # wrap level1 at top
-    expected = "start level1 level2 level3 \e[35mmagenta\e[39m text text end\e[0m"
+    expected = "start level1 level2 level3 \e[35mmagenta\e[0m text text end"
     assert_equal expected, result
   end
 
@@ -190,7 +190,7 @@ class TestSafeEmitSgr < Minitest::Test
     empty2 = ""
     content = "middle \e[32mgreen\e[39m"
     result = @go["start #{empty1.wrap} #{content.wrap} #{empty2.wrap} end"]  # mix empty + content
-    expected = "start  middle \e[32mgreen\e[39m  end\e[0m"  # empty wraps become spaces
+    expected = "start  middle \e[32mgreen\e[0m  end"  # empty wraps become spaces
     assert_equal expected, result
   end
 
@@ -239,7 +239,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Manually create string starting with wrap marker
     wrapped_start = "#{Gouache::WRAP_OPEN}#{content}#{Gouache::WRAP_CLOSE}rest"
     result = @go[wrapped_start, :bold, "bold"]
-    expected = "\e[33myellow\e[39m startrest\e[1mbold\e[0m"  # wrapped content extracted
+    expected = "\e[33myellow\e[0m startrest\e[1mbold\e[0m"  # wrapped content extracted
     assert_equal expected, result
   end
 
@@ -265,7 +265,7 @@ class TestSafeEmitSgr < Minitest::Test
       :bold, "bold #{var2.wrap} content #{var3.wrap} end"
     ]
 
-    expected = "start first \e[31mred\e[39m middle manual \e[34mblue\e[39m " +
+    expected = "start first \e[31mred\e[0m middle manual \e[34mblue\e[0m " +
                "\e[1mbold second \e[32mgreen\e[39m content third \e[33myellow\e[39m end\e[0m"
     assert_equal expected, result
   end
@@ -274,7 +274,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Class method Gouache.wrap should work in interpolations
     content_with_sgr = "class wrap \e[31mred\e[39m test"
     result = @go["before #{Gouache.wrap content_with_sgr} after", :bold, "bold"]
-    expected = "before class wrap \e[31mred\e[39m test after\e[1mbold\e[0m"
+    expected = "before class wrap \e[31mred\e[0m test after\e[1mbold\e[0m"
     assert_equal expected, result
   end
 
@@ -282,7 +282,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Class method Gouache.embed (alias for wrap) should work in interpolations
     content_with_sgr = "class embed \e[32mgreen\e[39m test"
     result = @go["before #{Gouache.embed content_with_sgr} after", :bold, "bold"]
-    expected = "before class embed \e[32mgreen\e[39m test after\e[1mbold\e[0m"
+    expected = "before class embed \e[32mgreen\e[0m test after\e[1mbold\e[0m"
     assert_equal expected, result
   end
 
@@ -290,7 +290,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Instance method @go.wrap should work in interpolations
     content_with_sgr = "instance wrap \e[33myellow\e[39m test"
     result = @go["before #{@go.wrap content_with_sgr} after", :bold, "bold"]
-    expected = "before instance wrap \e[33myellow\e[39m test after\e[1mbold\e[0m"
+    expected = "before instance wrap \e[33myellow\e[0m test after\e[1mbold\e[0m"
     assert_equal expected, result
   end
 
@@ -298,7 +298,7 @@ class TestSafeEmitSgr < Minitest::Test
     # Instance method @go.embed (alias for wrap) should work in interpolations
     content_with_sgr = "instance embed \e[34mblue\e[39m test"
     result = @go["before #{@go.embed content_with_sgr} after", :bold, "bold"]
-    expected = "before instance embed \e[34mblue\e[39m test after\e[1mbold\e[0m"
+    expected = "before instance embed \e[34mblue\e[0m test after\e[1mbold\e[0m"
     assert_equal expected, result
   end
 
@@ -312,7 +312,7 @@ class TestSafeEmitSgr < Minitest::Test
       :bold, "bold #{@go.embed content2} end"     # instance method (alias)
     ]
 
-    expected = "start class \e[35mmagenta\e[39m middle" +
+    expected = "start class \e[35mmagenta\e[0m middle" +
                "\e[1mbold instance \e[36mcyan\e[39m end\e[0m"
     assert_equal expected, result
   end

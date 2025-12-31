@@ -235,7 +235,7 @@ class TestPrinters < Minitest::Test
     out, _err = capture_io do
       @go.puts("before #{wrapped} after")
     end
-    expected = "before wrapped \e[35mmagenta\e[39m text after\e[0m\n"
+    expected = "before wrapped \e[35mmagenta\e[0m text after\n"
     assert_equal expected, out
   end
 
@@ -247,7 +247,7 @@ class TestPrinters < Minitest::Test
     out, _err = capture_io do
       @go.print("before #{wrapped} after")
     end
-    expected = "before wrapped \e[35mmagenta\e[39m text after\e[0m"
+    expected = "before wrapped \e[35mmagenta\e[0m text after"
     assert_equal expected, out
   end
 

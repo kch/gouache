@@ -23,6 +23,7 @@ class Gouache
     RANGES = { # ends as { k: LayerRange, ... }; keys get used for label too
       fg:              [30..39, 90..97, 39],
       bg:              [40..49, 100..107, 49],
+      underline_color: [58, 59], # affects underline + double_underline
       italic:          [ 3, 23],
       blink:           [ 5, 25],
       inverse:         [ 7, 27],
@@ -30,7 +31,6 @@ class Gouache
       strike:          [ 9, 29],
       overline:        [53, 55],
       underline:       [ 4, 21, 24], # underline + double_underline
-      underline_color: [58, 59],     # affects underline + double_underline
       bold:            [ 1, 22],
       dim:             [ 2, 22],
     }.zip(0..).to_h do |(k, xs), i|

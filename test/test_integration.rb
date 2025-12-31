@@ -15,7 +15,7 @@ class TestIntegration < Minitest::Test
   def test_underline_color_usage_example
     go = Gouache.new(ul: [:underline, @C.over_rgb(255, 0, 0)])
     result = go[:blue, :ul, 'test text']
-    expected = "\e[34;4;58;2;255;0;0mtest text\e[0m"
+    expected = "\e[34;58;2;255;0;0;4mtest text\e[0m"
     assert_equal expected, result
   end
 
@@ -29,12 +29,12 @@ class TestIntegration < Minitest::Test
     # Underline color with regular underline
     go = Gouache.new(combo: [:underline, @C.over_rgb(0, 255, 0)])
     result = go[:combo, "text"]
-    assert_equal "\e[4;58;2;0;255;0mtext\e[0m", result
+    assert_equal "\e[58;2;0;255;0;4mtext\e[0m", result
 
     # Underline color with double underline
     go = Gouache.new(double_combo: [:double_underline, @C.over_rgb(255, 255, 0)])
     result = go[:double_combo, "text"]
-    assert_equal "\e[21;58;2;255;255;0mtext\e[0m", result
+    assert_equal "\e[58;2;255;255;0;21mtext\e[0m", result
 
     # Underline color with foreground and background
     result = @go[:red, :on_blue, @C.over_rgb(255, 255, 0), "colorful"]
@@ -90,12 +90,12 @@ class TestIntegration < Minitest::Test
 
     # Test warning with both italic and underline color
     result = go[:warning, "Warning message"]
-    expected = "\e[33;3;58;2;255;165;0mWarning message\e[0m"
+    expected = "\e[33;58;2;255;165;0;3mWarning message\e[0m"
     assert_equal expected, result
 
     # Test info with both regular underline and underline color
     result = go[:info, "Information"]
-    expected = "\e[34;4;58;2;135;206;235mInformation\e[0m"
+    expected = "\e[34;58;2;135;206;235;4mInformation\e[0m"
     assert_equal expected, result
   end
 
@@ -109,14 +109,14 @@ class TestIntegration < Minitest::Test
     ul_color = @C.over_rgb(128, 0, 255)  # purple underline
     go = Gouache.new(purple_double: [:double_underline, ul_color])
     result = go[:purple_double, "double with color"]
-    expected = "\e[21;58;2;128;0;255mdouble with color\e[0m"
+    expected = "\e[58;2;128;0;255;21mdouble with color\e[0m"
     assert_equal expected, result
 
     # Test mixed underline types with color
     go = Gouache.new(mixed: [:underline, :double_underline, @C.over_rgb(255, 165, 0)])
     result = go[:mixed, "mixed underlines"]
     # Double underline should override regular underline
-    expected = "\e[21;58;2;255;165;0mmixed underlines\e[0m"
+    expected = "\e[58;2;255;165;0;21mmixed underlines\e[0m"
     assert_equal expected, result
 
     # Test underline color affects both regular and double underline
@@ -128,8 +128,8 @@ class TestIntegration < Minitest::Test
     regular_result = go[:regular, "regular"]
     double_result = go[:double, "double"]
 
-    assert_includes regular_result, "4;58;2;255;0;0"    # regular underline with color
-    assert_includes double_result, "21;58;2;255;0;0"    # double underline with color
+    assert_includes regular_result, "58;2;255;0;0;4"    # regular underline with color
+    assert_includes double_result, "58;2;255;0;0;21"    # double underline with color
   end
 
   # Test layered composition with underline colors
@@ -182,7 +182,7 @@ class TestIntegration < Minitest::Test
       ]
     ]
 
-    expected = "Start\e[22;58;2;255;0;0;1mred underline\e[3;58;2;0;255;0mgreen underline\e[58;2;0;0;255;1;2mblue underline\e[0m"
+    expected = "Start\e[22;58;2;255;0;0;1mred underline\e[58;2;0;255;0;3mgreen underline\e[58;2;0;0;255;1;2mblue underline\e[0m"
     assert_equal expected, result
   end
 
@@ -944,7 +944,7 @@ class TestIntegration < Minitest::Test
     # Test SGR 59 in realistic nested structure where it actually appears
     result = go[:underline, :set_ul_color, 'text with ul color', [:over_default, 'nested without ul'], 'back with ul']
 
-    assert_includes result, "\e[4;58;2;255;0;255m", "Should contain underline and ul color"
+    assert_includes result, "\e[58;2;255;0;255;4m", "Should contain underline and ul color"
     assert_includes result, "\e[59m", "Should contain SGR 59 reset"
     assert_includes result, "\e[58;2;255;0;255m", "Should restore ul color after reset"
     assert_includes result, "text with ul color", "Should contain first text"

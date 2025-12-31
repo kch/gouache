@@ -68,9 +68,12 @@ module Minitest
     # render the colored string directly to term, along with the inspect version
     def mu_pp_for_diff(obj)
       return old_mu_pp_for_diff obj unless String === obj && obj =~ /\e/
+      esc  = "\e[38;5;240;48;5;235m"
+      code = "\e[38;5;136m"
       # escape \e's that are not SGR; let the SGR render
       [ obj.gsub(/\e(?!\[[\d;]*?m|\\)/, "\\e") + "\e[0m",
-        obj.inspect].join("\n")
+        obj.inspect.gsub(/(\\e\[)([\d;]+?)(m)/o, "#{esc}\\1#{code}\\2#{esc}\\3\e[0m")
+        ].join("\n")
     end
   end
 end

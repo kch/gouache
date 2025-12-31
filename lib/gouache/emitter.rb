@@ -14,6 +14,8 @@ class Gouache
       @flushed  = @layers.base   # keep layer state after each flush so next flush can diff against it
       @queue    = []             # accumulate sgr params to emit until we have text to style (we collapse to minimal set then)
       @out      = +""
+      @el_sepla = /(?=#{Regexp.escape @eachline})/  if @eachline # lookahead for eachline separator
+      @el_sep   = /(?:#{Regexp.escape @eachline})+/ if @eachline # one or more eachline separators
       # special rule _base applies to all
       enqueue @layers.diffpush @ss.layers[:_base], @ss.effects[:_base] if @ss.tag? :_base
     end
@@ -41,34 +43,23 @@ class Gouache
       s = s.to_s
       return self if s.empty?
       flush
-      if @enabled && @eachline && s.include?(@eachline) && (sgr = @layers.top.diff(@layers.base)).any?
-        emit_each_line s, sgr
+      if @enabled && @eachline && s.include?(@eachline) && @layers.top != @layers.base
+        emit_each_line s
       else
         @out << s
       end
       self
     end
 
-    private def emit_each_line(s, sgrs)
-      ss    = StringScanner.new(s)
-      sgr   = Layer.from(sgrs).to_sgr(fallback: true)
-      sgr   = [CSI, sgr, ?m].join
-      reset = [CSI, "0m"].join
-      sepla = /(?=#{Regexp.escape @eachline})/
-      sep   = /(?:#{Regexp.escape @eachline})+/
-      while line = ss.scan_until(sepla)
-        @out << line
-        @out << reset
-        @out << ss.scan(sep)
-        @out << sgr unless ss.eos? # will enqueue instead below
+    private def emit_each_line(s)
+      ss  = StringScanner.new(s)
+      while line = ss.scan_until(@el_sepla)
+        self << line
+        begin_sgr.push_sgr "0"
+        self << ss.scan(@el_sep)
+        end_sgr
       end
-      if ss.eos?
-        @got_sgr = false        # already emitted 0m, this prevents the extra 0 at emit!
-        @flushed = @layers.base # we sent 0 so reset flushed
-        enqueue sgrs            # enqueue the sgrs we didn't emit so they get consolidated on next flush
-      else
-        @out << ss.rest
-      end
+      self << ss.rest unless ss.eos?
     end
 
     private def flush

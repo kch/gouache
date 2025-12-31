@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby -w
 # frozen_string_literal: true
 require "pathname"
+require "bundler/setup"
 
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 $LOAD_PATH.unshift File.expand_path("../test", __dir__)

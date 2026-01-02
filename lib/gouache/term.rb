@@ -5,7 +5,7 @@ require_relative "color_utils"
 
 class Gouache
   module Term
-    extend self
+    module_function
 
     RG_BASIC = (0..15)
     RG_CUBE  = (16..231)

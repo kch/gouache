@@ -5,7 +5,7 @@ require_relative "utils"
 
 class Gouache
   module ColorUtils
-    extend self
+    module_function
 
     using RegexpWrap
     REL_CHROMA       = / (        1(?:\.0+)? | 0 | 0? \. \d+ )? max /x.w

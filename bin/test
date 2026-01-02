@@ -58,8 +58,8 @@ Minitest::Reporters.use!(
 
     def record(r)
       return unless r.failure
-      file, lno = r.location.match(/\[(.*):(\d+)\]$/)[1,2]
-      file = Pathname.new(file)
+      file, lno = r.source_location
+      file = Pathname.new(file).relative_path_from Dir.pwd
       method = r.name
       @fails[file] << [method, lno]
     end

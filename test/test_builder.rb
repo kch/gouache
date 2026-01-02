@@ -110,7 +110,7 @@ class TestBuilder < Minitest::Test
   end
 
   def test_unfinished_chain_single_method
-    assert_raises(Gouache::Builder::UnfinishedChain) do
+    assert_raises(Gouache::Builder::UnfinishedChainError) do
       @gouache.red.bold {|x|
         x.underline.underline.underline
       }
@@ -118,7 +118,7 @@ class TestBuilder < Minitest::Test
   end
 
   def test_unfinished_chain_with_content_before
-    assert_raises(Gouache::Builder::UnfinishedChain) do
+    assert_raises(Gouache::Builder::UnfinishedChainError) do
       @gouache.red.bold {|x|
         x.bar("content")
         x.underline
@@ -127,7 +127,7 @@ class TestBuilder < Minitest::Test
   end
 
   def test_unfinished_chain_with_content_after
-    assert_raises(Gouache::Builder::UnfinishedChain) do
+    assert_raises(Gouache::Builder::UnfinishedChainError) do
       @gouache.red {|x|
         x.underline
         x.bar("content")
@@ -219,7 +219,7 @@ class TestBuilder < Minitest::Test
   def test_standalone_unfinished_chain
     chain = @gouache.red
     assert_kind_of Gouache::Builder::ChainProxy, chain
-    # UnfinishedChain is only raised when the chain is left dangling in a block context
+    # UnfinishedChainError is only raised when the chain is left dangling in a block context
   end
 
   def test_call_with_string_only_raises_error

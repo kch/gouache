@@ -74,7 +74,7 @@ class Gouache
 
     ### block/chains
 
-    class UnfinishedChain < RuntimeError
+    class UnfinishedChainError < RuntimeError
       def initialize(chain) = super "call chain #{chain.instance_exec{@tags}*?.} left dangling with no arguments"
     end
 
@@ -122,7 +122,7 @@ class Gouache
       end
 
       private def _build!(m, *content, &builder)
-        ::Kernel.raise UnfinishedChain, @chain if @chain
+        ::Kernel.raise UnfinishedChainError, @chain if @chain
         if content.empty? && builder.nil?
           @chain = ChainProxy.new(self, m)
           return @chain
@@ -139,7 +139,7 @@ class Gouache
         in _ then ::Kernel.raise ::ArgumentError
         end
         @nesting -= 1
-        ::Kernel.raise UnfinishedChain, @chain if @chain
+        ::Kernel.raise UnfinishedChainError, @chain if @chain
         @emitter.close_tag if m
         @nesting == 0 ? @emitter.emit! : nil
       end
